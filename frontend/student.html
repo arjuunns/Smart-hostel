@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Smart Hostel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h2>🏠 Smart Hostel</h2>
+            <div class="user-info">
+                <div class="name">Student</div>
+                <div class="role">STUDENT</div>
+            </div>
+            <nav>
+                <a href="#" class="active" onclick="showSection('dashboard')">📊 Dashboard</a>
+                <a href="#" onclick="showSection('apply-leave')">📝 Apply Leave</a>
+                <a href="#" onclick="showSection('my-leaves')">📋 My Leaves</a>
+                <a href="#" onclick="showSection('attendance')">✅ Attendance</a>
+            </nav>
+            <div class="logout-btn">
+                <button class="btn btn-secondary" onclick="utils.logout()" style="width: 100%;">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard-section">
+                <h1>Welcome, <span id="studentName">Student</span>!</h1>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalLeaves">0</div>
+                        <div class="stat-label">Total Leaves</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="pendingLeaves">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="approvedLeaves">0</div>
+                        <div class="stat-label">Approved</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="attendancePercent">-</div>
+                        <div class="stat-label">Attendance %</div>
+                    </div>
+                </div>
+
+                <!-- Active Gate Pass -->
+                <div class="card" id="activeGatePassCard" style="display: none;">
+                    <h3>🎫 Active Gate Pass</h3>
+                    <div id="activeGatePassContent"></div>
+                </div>
+
+                <!-- Recent Leaves -->
+                <div class="card">
+                    <h3>Recent Leaves</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentLeavesTable">
+                                <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Apply Leave Section -->
+            <section id="apply-leave-section" class="hidden">
+                <h1>Apply for Leave</h1>
+                
+                <div class="card">
+                    <form id="leaveForm" onsubmit="submitLeave(event)">
+                        <div class="form-group">
+                            <label for="leaveType">Leave Type</label>
+                            <select id="leaveType" required>
+                                <option value="REGULAR">Regular Leave</option>
+                                <option value="EMERGENCY">Emergency Leave</option>
+                                <option value="MEDICAL">Medical Leave</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fromDateTime">From Date & Time</label>
+                                <input type="datetime-local" id="fromDateTime" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="toDateTime">To Date & Time</label>
+                                <input type="datetime-local" id="toDateTime" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="reason">Reason</label>
+                            <textarea id="reason" required placeholder="Enter your reason for leave..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Submit Leave Application</button>
+                    </form>
+                    <div id="leaveMessage" class="message"></div>
+                </div>
+            </section>
+
+            <!-- My Leaves Section -->
+            <section id="my-leaves-section" class="hidden">
+                <h1>My Leave History</h1>
+                
+                <div class="card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Reason</th>
+                                    <th>Status</th>
+                                    <th>Remarks</th>
+                                    <th>Gate Pass</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allLeavesTable">
+                                <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Attendance Section -->
+            <section id="attendance-section" class="hidden">
+                <h1>My Attendance</h1>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="attTotal">0</div>
+                        <div class="stat-label">Total Days</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="attPresent">0</div>
+                        <div class="stat-label">Present</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="attAbsent">0</div>
+                        <div class="stat-label">Absent</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="attOnLeave">0</div>
+                        <div class="stat-label">On Leave</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Attendance Records</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Marked By</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTable">
+                                <tr><td colspan="3" class="empty-state">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- QR Modal -->
+    <div id="qrModal" class="modal-overlay hidden" onclick="closeQRModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <h3>🎫 Gate Pass QR Code</h3>
+            <div id="qrContent"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeQRModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Check authentication
+        if (!utils.checkAuth()) {
+            window.location.href = 'index.html';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initSidebar();
+            loadDashboard();
+        });
+
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+            // Show selected section
+            document.getElementById(`${section}-section`).classList.remove('hidden');
+            // Update nav
+            document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Load data for section
+            if (section === 'my-leaves') loadAllLeaves();
+            if (section === 'attendance') loadAttendance();
+            if (section === 'dashboard') loadDashboard();
+        }
+
+        async function loadDashboard() {
+            const user = utils.getCurrentUser();
+            document.getElementById('studentName').textContent = user.name;
+
+            try {
+                // Load leaves
+                const leavesRes = await api.getMyLeaves();
+                if (leavesRes.success) {
+                    const leaves = leavesRes.data;
+                    
+                    // Stats
+                    document.getElementById('totalLeaves').textContent = leaves.length;
+                    document.getElementById('pendingLeaves').textContent = leaves.filter(l => l.status === 'PENDING').length;
+                    document.getElementById('approvedLeaves').textContent = leaves.filter(l => l.status === 'APPROVED').length;
+
+                    // Recent leaves table
+                    const recentLeaves = leaves.slice(0, 5);
+                    renderLeavesTable(recentLeaves, 'recentLeavesTable', true);
+
+                    // Check for active gate pass
+                    const activeLeave = leaves.find(l => l.status === 'APPROVED' && l.gatePassId && l.currentStatus !== 'RETURNED');
+                    if (activeLeave) {
+                        showActiveGatePass(activeLeave);
+                    }
+                }
+
+                // Load attendance
+                const attRes = await api.getMyAttendance();
+                if (attRes.success && attRes.summary) {
+                    const { total, present, absent } = attRes.summary;
+                    const percent = total > 0 ? Math.round((present / total) * 100) : 0;
+                    document.getElementById('attendancePercent').textContent = `${percent}%`;
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        async function loadAllLeaves() {
+            try {
+                const res = await api.getMyLeaves();
+                if (res.success) {
+                    renderLeavesTable(res.data, 'allLeavesTable', false);
+                }
+            } catch (error) {
+                console.error('Error loading leaves:', error);
+            }
+        }
+
+        function renderLeavesTable(leaves, tableId, isRecent) {
+            const tbody = document.getElementById(tableId);
+            
+            if (leaves.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${isRecent ? 4 : 7}" class="empty-state">No leaves found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = leaves.map(leave => `
+                <tr>
+                    <td>${leave.leaveType}</td>
+                    <td>${utils.formatDateTime(leave.fromDateTime)}</td>
+                    <td>${utils.formatDateTime(leave.toDateTime)}</td>
+                    ${!isRecent ? `<td>${leave.reason.substring(0, 30)}...</td>` : ''}
+                    <td>${utils.getStatusBadge(leave.status)}</td>
+                    ${!isRecent ? `<td>${leave.remarks || '-'}</td>` : ''}
+                    ${!isRecent ? `
+                        <td>
+                            ${leave.gatePassId ? 
+                                `<button class="btn btn-sm btn-primary" onclick="showQRCode('${leave.gatePassId}', '${leave._id}')">View QR</button>` : 
+                                '-'}
+                        </td>
+                    ` : ''}
+                </tr>
+            `).join('');
+        }
+
+        function showActiveGatePass(leave) {
+            const card = document.getElementById('activeGatePassCard');
+            const content = document.getElementById('activeGatePassContent');
+            
+            card.style.display = 'block';
+            content.innerHTML = `
+                <p><strong>Leave:</strong> ${leave.leaveType} - ${leave.reason.substring(0, 50)}...</p>
+                <p><strong>Valid:</strong> ${utils.formatDateTime(leave.fromDateTime)} to ${utils.formatDateTime(leave.toDateTime)}</p>
+                <p><strong>Status:</strong> ${utils.getStatusBadge(leave.currentStatus || 'IN')}</p>
+                <div class="qr-container">
+                    <img src="${utils.generateQRUrl({ gatePassId: leave.gatePassId, studentId: leave.studentId, leaveId: leave._id, type: 'LEAVE' })}" alt="QR Code">
+                    <div class="gate-pass-id">${leave.gatePassId}</div>
+                </div>
+            `;
+        }
+
+        function showQRCode(gatePassId, leaveId) {
+            const user = utils.getCurrentUser();
+            const qrData = {
+                gatePassId: gatePassId,
+                studentId: user._id,
+                leaveId: leaveId,
+                type: 'LEAVE'
+            };
+
+            document.getElementById('qrContent').innerHTML = `
+                <div class="qr-container">
+                    <img src="${utils.generateQRUrl(qrData)}" alt="QR Code">
+                    <div class="gate-pass-id">${gatePassId}</div>
+                    <p style="margin-top: 10px; color: var(--text-muted);">Show this QR code to the guard at the gate</p>
+                </div>
+            `;
+            document.getElementById('qrModal').classList.remove('hidden');
+        }
+
+        function closeQRModal(e) {
+            if (!e || e.target.classList.contains('modal-overlay')) {
+                document.getElementById('qrModal').classList.add('hidden');
+            }
+        }
+
+        async function submitLeave(e) {
+            e.preventDefault();
+            
+            const leaveData = {
+                leaveType: document.getElementById('leaveType').value,
+                fromDateTime: document.getElementById('fromDateTime').value,
+                toDateTime: document.getElementById('toDateTime').value,
+                reason: document.getElementById('reason').value
+            };
+
+            try {
+                const res = await api.applyLeave(leaveData);
+                const msgEl = document.getElementById('leaveMessage');
+                
+                if (res.success) {
+                    msgEl.className = 'message success';
+                    msgEl.textContent = 'Leave application submitted successfully!';
+                    document.getElementById('leaveForm').reset();
+                    setTimeout(() => {
+                        showSection('my-leaves');
+                    }, 1500);
+                } else {
+                    msgEl.className = 'message error';
+                    msgEl.textContent = res.message || 'Failed to submit leave';
+                }
+            } catch (error) {
+                document.getElementById('leaveMessage').className = 'message error';
+                document.getElementById('leaveMessage').textContent = 'Error submitting leave';
+            }
+        }
+
+        async function loadAttendance() {
+            try {
+                const res = await api.getMyAttendance();
+                if (res.success) {
+                    const { summary, data } = res;
+                    
+                    // Update stats
+                    document.getElementById('attTotal').textContent = summary.total;
+                    document.getElementById('attPresent').textContent = summary.present;
+                    document.getElementById('attAbsent').textContent = summary.absent;
+                    document.getElementById('attOnLeave').textContent = summary.onLeave;
+
+                    // Render table
+                    const tbody = document.getElementById('attendanceTable');
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No attendance records</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = data.map(att => `
+                        <tr>
+                            <td>${utils.formatDate(att.date)}</td>
+                            <td>${utils.getStatusBadge(att.status)}</td>
+                            <td>${att.markedBy?.name || 'System'}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading attendance:', error);
+            }
+        }
+    </script>
+</body>
+</html>

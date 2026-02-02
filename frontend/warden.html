@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warden Dashboard - Smart Hostel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h2>🏠 Smart Hostel</h2>
+            <div class="user-info">
+                <div class="name">Warden</div>
+                <div class="role">WARDEN</div>
+            </div>
+            <nav>
+                <a href="#" class="active" onclick="showSection('dashboard')">📊 Dashboard</a>
+                <a href="#" onclick="showSection('pending-leaves')">⏳ Pending Leaves</a>
+                <a href="#" onclick="showSection('all-leaves')">📋 All Leaves</a>
+                <a href="#" onclick="showSection('attendance')">✅ Attendance</a>
+                <a href="#" onclick="showSection('out-students')">🚶 Out Students</a>
+                <a href="#" onclick="showSection('reports')">📈 Reports</a>
+            </nav>
+            <div class="logout-btn">
+                <button class="btn btn-secondary" onclick="utils.logout()" style="width: 100%;">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard-section">
+                <h1>Warden Dashboard</h1>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="pendingCount">0</div>
+                        <div class="stat-label">Pending Leaves</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="emergencyCount">0</div>
+                        <div class="stat-label">Emergency Leaves</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="outCount">0</div>
+                        <div class="stat-label">Students Out</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="overstayCount">0</div>
+                        <div class="stat-label">Overstayed</div>
+                    </div>
+                </div>
+
+                <!-- Emergency Leaves Alert -->
+                <div class="card" id="emergencyCard" style="display: none; border-left: 4px solid var(--danger-color);">
+                    <h3>🚨 Emergency Leaves (Requires Immediate Attention)</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Hostel</th>
+                                    <th>Room</th>
+                                    <th>Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emergencyTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Pending -->
+                <div class="card">
+                    <h3>Recent Pending Leaves</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentPendingTable">
+                                <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pending Leaves Section -->
+            <section id="pending-leaves-section" class="hidden">
+                <h1>Pending Leave Requests</h1>
+                
+                <div class="card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Hostel/Room</th>
+                                    <th>Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingLeavesTable">
+                                <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- All Leaves Section -->
+            <section id="all-leaves-section" class="hidden">
+                <h1>All Leave Records</h1>
+                
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="filterStatus">Status</label>
+                            <select id="filterStatus" onchange="loadAllLeaves()">
+                                <option value="">All</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="APPROVED">Approved</option>
+                                <option value="REJECTED">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filterType">Leave Type</label>
+                            <select id="filterType" onchange="loadAllLeaves()">
+                                <option value="">All</option>
+                                <option value="REGULAR">Regular</option>
+                                <option value="EMERGENCY">Emergency</option>
+                                <option value="MEDICAL">Medical</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Status</th>
+                                    <th>Approved By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allLeavesTable">
+                                <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Attendance Section -->
+            <section id="attendance-section" class="hidden">
+                <h1>Attendance Management</h1>
+                
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="attendanceDate">Date</label>
+                            <input type="date" id="attendanceDate" onchange="loadAttendanceForDate()">
+                        </div>
+                        <div class="form-group">
+                            <label for="hostelFilter">Hostel Block</label>
+                            <input type="text" id="hostelFilter" placeholder="e.g., Block A" onchange="loadAttendanceForDate()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3>Mark Attendance</h3>
+                        <button class="btn btn-primary" onclick="submitBulkAttendance()">Save All</button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Hostel/Room</th>
+                                    <th>Current Status</th>
+                                    <th>Mark As</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceMarkTable">
+                                <tr><td colspan="4" class="empty-state">Select a date to load students</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Out Students Section -->
+            <section id="out-students-section" class="hidden">
+                <h1>Students Currently Out</h1>
+                
+                <div class="card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Hostel/Room</th>
+                                    <th>Phone</th>
+                                    <th>Left On</th>
+                                    <th>Expected Return</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="outStudentsTable">
+                                <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reports Section -->
+            <section id="reports-section" class="hidden">
+                <h1>Reports & Export</h1>
+                
+                <div class="stats-grid">
+                    <div class="card">
+                        <h3>Leave Report</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>From</label>
+                                <input type="date" id="leaveReportFrom">
+                            </div>
+                            <div class="form-group">
+                                <label>To</label>
+                                <input type="date" id="leaveReportTo">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="downloadReport('leaves')">Download CSV</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>Attendance Report</h3>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="attendanceReportDate">
+                        </div>
+                        <button class="btn btn-primary" onclick="downloadReport('attendance')">Download CSV</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>Gate Logs Report</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>From</label>
+                                <input type="date" id="gateReportFrom">
+                            </div>
+                            <div class="form-group">
+                                <label>To</label>
+                                <input type="date" id="gateReportTo">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="downloadReport('gate-logs')">Download CSV</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Decision Modal -->
+    <div id="decisionModal" class="modal-overlay hidden" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <h3 id="modalTitle">Leave Decision</h3>
+            <div id="modalLeaveInfo"></div>
+            <div class="form-group">
+                <label for="decisionRemarks">Remarks</label>
+                <textarea id="decisionRemarks" placeholder="Enter remarks (optional)"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-success" onclick="submitDecision('APPROVE')">✓ Approve</button>
+                <button class="btn btn-danger" onclick="submitDecision('REJECT')">✗ Reject</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Check authentication
+        if (!utils.checkAuth()) {
+            window.location.href = 'index.html';
+        }
+
+        let currentLeaveId = null;
+        let attendanceData = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initSidebar();
+            loadDashboard();
+            
+            // Set default date for attendance
+            document.getElementById('attendanceDate').value = new Date().toISOString().split('T')[0];
+        });
+
+        function showSection(section) {
+            document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`${section}-section`).classList.remove('hidden');
+            document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (section === 'pending-leaves') loadPendingLeaves();
+            if (section === 'all-leaves') loadAllLeaves();
+            if (section === 'attendance') loadAttendanceForDate();
+            if (section === 'out-students') loadOutStudents();
+            if (section === 'dashboard') loadDashboard();
+        }
+
+        async function loadDashboard() {
+            try {
+                // Load pending leaves
+                const pendingRes = await api.getPendingLeaves();
+                if (pendingRes.success) {
+                    document.getElementById('pendingCount').textContent = pendingRes.count;
+                    renderPendingTable(pendingRes.data.slice(0, 5), 'recentPendingTable');
+                }
+
+                // Load emergency leaves
+                const emergencyRes = await api.getEmergencyLeaves();
+                if (emergencyRes.success) {
+                    document.getElementById('emergencyCount').textContent = emergencyRes.count;
+                    if (emergencyRes.count > 0) {
+                        document.getElementById('emergencyCard').style.display = 'block';
+                        renderEmergencyTable(emergencyRes.data);
+                    }
+                }
+
+                // Load out students
+                const outRes = await api.getOutStudents();
+                if (outRes.success) {
+                    document.getElementById('outCount').textContent = outRes.count;
+                    const overstayed = outRes.data.filter(s => s.isOverstayed).length;
+                    document.getElementById('overstayCount').textContent = overstayed;
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        async function loadPendingLeaves() {
+            try {
+                const res = await api.getPendingLeaves();
+                if (res.success) {
+                    renderPendingTable(res.data, 'pendingLeavesTable', true);
+                }
+            } catch (error) {
+                console.error('Error loading pending leaves:', error);
+            }
+        }
+
+        function renderPendingTable(leaves, tableId, full = false) {
+            const tbody = document.getElementById(tableId);
+            
+            if (leaves.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${full ? 7 : 5}" class="empty-state">No pending leaves</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = leaves.map(leave => `
+                <tr>
+                    <td>${leave.studentId?.name || 'Unknown'}</td>
+                    ${full ? `<td>${leave.studentId?.hostelBlock || '-'} / ${leave.studentId?.roomNo || '-'}</td>` : ''}
+                    <td><span class="badge badge-${leave.leaveType === 'EMERGENCY' ? 'rejected' : 'pending'}">${leave.leaveType}</span></td>
+                    <td>${utils.formatDateTime(leave.fromDateTime)}</td>
+                    <td>${utils.formatDateTime(leave.toDateTime)}</td>
+                    ${full ? `<td>${leave.reason.substring(0, 30)}...</td>` : ''}
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="openDecisionModal('${leave._id}', '${leave.studentId?.name}', '${leave.reason}')">Review</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderEmergencyTable(leaves) {
+            const tbody = document.getElementById('emergencyTable');
+            tbody.innerHTML = leaves.map(leave => `
+                <tr>
+                    <td>${leave.studentId?.name || 'Unknown'}</td>
+                    <td>${leave.studentId?.hostelBlock || '-'}</td>
+                    <td>${leave.studentId?.roomNo || '-'}</td>
+                    <td>${leave.reason.substring(0, 50)}...</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onclick="quickApprove('${leave._id}')">Quick Approve</button>
+                        <button class="btn btn-sm btn-primary" onclick="openDecisionModal('${leave._id}', '${leave.studentId?.name}', '${leave.reason}')">Review</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadAllLeaves() {
+            try {
+                const filters = {
+                    status: document.getElementById('filterStatus').value,
+                    leaveType: document.getElementById('filterType').value
+                };
+                
+                const res = await api.getAllLeaves(filters);
+                if (res.success) {
+                    const tbody = document.getElementById('allLeavesTable');
+                    
+                    if (res.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No leaves found</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = res.data.map(leave => `
+                        <tr>
+                            <td>${leave.studentId?.name || 'Unknown'}</td>
+                            <td>${leave.leaveType}</td>
+                            <td>${utils.formatDateTime(leave.fromDateTime)}</td>
+                            <td>${utils.formatDateTime(leave.toDateTime)}</td>
+                            <td>${utils.getStatusBadge(leave.status)}</td>
+                            <td>${leave.approvedBy?.name || '-'}</td>
+                            <td>
+                                ${leave.status === 'PENDING' ? 
+                                    `<button class="btn btn-sm btn-primary" onclick="openDecisionModal('${leave._id}', '${leave.studentId?.name}', '${leave.reason}')">Review</button>` : 
+                                    '-'}
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading leaves:', error);
+            }
+        }
+
+        function openDecisionModal(leaveId, studentName, reason) {
+            currentLeaveId = leaveId;
+            document.getElementById('modalTitle').textContent = `Leave Request - ${studentName}`;
+            document.getElementById('modalLeaveInfo').innerHTML = `<p><strong>Reason:</strong> ${reason}</p>`;
+            document.getElementById('decisionRemarks').value = '';
+            document.getElementById('decisionModal').classList.remove('hidden');
+        }
+
+        function closeModal(e) {
+            if (!e || e.target.classList.contains('modal-overlay')) {
+                document.getElementById('decisionModal').classList.add('hidden');
+                currentLeaveId = null;
+            }
+        }
+
+        async function submitDecision(action) {
+            if (!currentLeaveId) return;
+
+            const remarks = document.getElementById('decisionRemarks').value;
+            
+            try {
+                const res = await api.decideLeave(currentLeaveId, action, remarks);
+                if (res.success) {
+                    utils.showToast(`Leave ${action === 'APPROVE' ? 'approved' : 'rejected'} successfully`, 'success');
+                    closeModal();
+                    loadDashboard();
+                    loadPendingLeaves();
+                } else {
+                    utils.showToast(res.message || 'Action failed', 'error');
+                }
+            } catch (error) {
+                utils.showToast('Error processing request', 'error');
+            }
+        }
+
+        async function quickApprove(leaveId) {
+            try {
+                const res = await api.decideLeave(leaveId, 'APPROVE', 'Emergency - Quick Approved');
+                if (res.success) {
+                    utils.showToast('Emergency leave approved!', 'success');
+                    loadDashboard();
+                }
+            } catch (error) {
+                utils.showToast('Error approving leave', 'error');
+            }
+        }
+
+        async function loadAttendanceForDate() {
+            const date = document.getElementById('attendanceDate').value;
+            if (!date) return;
+
+            try {
+                const res = await api.getAttendanceForDate(date);
+                if (res.success) {
+                    attendanceData = res.data;
+                    const hostelFilter = document.getElementById('hostelFilter').value.toLowerCase();
+                    
+                    let filtered = attendanceData;
+                    if (hostelFilter) {
+                        filtered = attendanceData.filter(a => 
+                            a.student.hostelBlock?.toLowerCase().includes(hostelFilter)
+                        );
+                    }
+
+                    renderAttendanceTable(filtered);
+                }
+            } catch (error) {
+                console.error('Error loading attendance:', error);
+            }
+        }
+
+        function renderAttendanceTable(data) {
+            const tbody = document.getElementById('attendanceMarkTable');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No students found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => `
+                <tr>
+                    <td>${item.student.name}</td>
+                    <td>${item.student.hostelBlock || '-'} / ${item.student.roomNo || '-'}</td>
+                    <td>${item.status === 'NOT_MARKED' ? '<span class="badge badge-pending">Not Marked</span>' : utils.getStatusBadge(item.status)}</td>
+                    <td>
+                        <select id="att-${item.student._id}" class="attendance-select">
+                            <option value="">-- Select --</option>
+                            <option value="PRESENT" ${item.status === 'PRESENT' ? 'selected' : ''}>Present</option>
+                            <option value="ABSENT" ${item.status === 'ABSENT' ? 'selected' : ''}>Absent</option>
+                            <option value="ON_LEAVE" ${item.status === 'ON_LEAVE' ? 'selected' : ''}>On Leave</option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function submitBulkAttendance() {
+            const date = document.getElementById('attendanceDate').value;
+            if (!date) {
+                utils.showToast('Please select a date', 'error');
+                return;
+            }
+
+            const records = [];
+            attendanceData.forEach(item => {
+                const select = document.getElementById(`att-${item.student._id}`);
+                if (select && select.value) {
+                    records.push({
+                        studentId: item.student._id,
+                        status: select.value
+                    });
+                }
+            });
+
+            if (records.length === 0) {
+                utils.showToast('No attendance changes to save', 'error');
+                return;
+            }
+
+            try {
+                const res = await api.markBulkAttendance(date, records);
+                if (res.success) {
+                    utils.showToast(`Attendance saved for ${records.length} students`, 'success');
+                    loadAttendanceForDate();
+                } else {
+                    utils.showToast(res.message || 'Failed to save attendance', 'error');
+                }
+            } catch (error) {
+                utils.showToast('Error saving attendance', 'error');
+            }
+        }
+
+        async function loadOutStudents() {
+            try {
+                const res = await api.getOutStudents();
+                if (res.success) {
+                    const tbody = document.getElementById('outStudentsTable');
+                    
+                    if (res.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No students currently out</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = res.data.map(item => `
+                        <tr>
+                            <td>${item.student?.name || 'Unknown'}</td>
+                            <td>${item.student?.hostelBlock || '-'} / ${item.student?.roomNo || '-'}</td>
+                            <td>${item.student?.phone || '-'}</td>
+                            <td>${utils.formatDateTime(item.fromDateTime)}</td>
+                            <td>${utils.formatDateTime(item.toDateTime)}</td>
+                            <td>${item.isOverstayed ? '<span class="badge badge-overstay">⚠️ OVERSTAYED</span>' : '<span class="badge badge-out">OUT</span>'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger" onclick="forceReturn('${item._id}')">Force Return</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading out students:', error);
+            }
+        }
+
+        async function forceReturn(leaveId) {
+            if (!confirm('Are you sure you want to force-mark this student as returned?')) return;
+
+            try {
+                const res = await api.forceReturn(leaveId, 'Force marked as returned by warden');
+                if (res.success) {
+                    utils.showToast('Student marked as returned', 'success');
+                    loadOutStudents();
+                    loadDashboard();
+                } else {
+                    utils.showToast(res.message || 'Action failed', 'error');
+                }
+            } catch (error) {
+                utils.showToast('Error processing request', 'error');
+            }
+        }
+
+        function downloadReport(type) {
+            let filters = {};
+            
+            if (type === 'leaves') {
+                filters.from = document.getElementById('leaveReportFrom').value;
+                filters.to = document.getElementById('leaveReportTo').value;
+            } else if (type === 'attendance') {
+                filters.date = document.getElementById('attendanceReportDate').value;
+            } else if (type === 'gate-logs') {
+                filters.from = document.getElementById('gateReportFrom').value;
+                filters.to = document.getElementById('gateReportTo').value;
+            }
+
+            api.downloadCSV(`/reports/${type}`, filters);
+        }
+    </script>
+</body>
+</html>
