@@ -10,16 +10,22 @@
     <div class="dashboard">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <h2>🏠 Smart Hostel</h2>
+            <h2><img src="image.png" alt="Smart Hostel" class="logo"> Smart Hostel</h2>
             <div class="user-info">
                 <div class="name">Guard</div>
                 <div class="role">GUARD</div>
             </div>
             <nav>
-                <a href="#" class="active" onclick="showSection('scan')">📷 Scan Gate Pass</a>
-                <a href="#" onclick="showSection('out-list')">🚶 Out Students</a>
-                <a href="#" onclick="showSection('logs')">📋 Gate Logs</a>
+                <a href="#" class="active" onclick="showSection('scan')">Scan Gate Pass</a>
+                <a href="#" onclick="showSection('out-list')">Out Students</a>
+                <a href="#" onclick="showSection('logs')">Gate Logs</a>
             </nav>
+            <div class="theme-toggle" onclick="toggleTheme()">
+                <svg class="theme-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+                <span>Toggle Theme</span>
+            </div>
             <div class="logout-btn">
                 <button class="btn btn-secondary" onclick="utils.logout()" style="width: 100%;">Logout</button>
             </div>
@@ -59,10 +65,10 @@
                         
                         <div class="action-buttons" style="justify-content: center; margin-top: 20px;">
                             <button class="btn btn-danger" onclick="processGatePass('exit')" style="padding: 16px 40px; font-size: 16px;">
-                                🚶‍♂️ EXIT
+                                EXIT
                             </button>
                             <button class="btn btn-success" onclick="processGatePass('entry')" style="padding: 16px 40px; font-size: 16px;">
-                                🏠 ENTRY
+                                ENTRY
                             </button>
                         </div>
                     </div>
@@ -100,7 +106,7 @@
                         <div>
                             <span id="outListCount">0</span> students currently out
                         </div>
-                        <button class="btn btn-secondary" onclick="loadOutStudents()">🔄 Refresh</button>
+                        <button class="btn btn-secondary" onclick="loadOutStudents()">Refresh</button>
                     </div>
                     
                     <div class="table-container">
@@ -125,7 +131,7 @@
 
                 <!-- Overstayed Alert -->
                 <div class="card" id="overstayedCard" style="display: none; border-left: 4px solid var(--danger-color);">
-                    <h3>⚠️ Overstayed Students</h3>
+                    <h3>Overstayed Students</h3>
                     <p style="color: var(--text-muted); margin-bottom: 16px;">These students have exceeded their leave period</p>
                     <div class="table-container">
                         <table>
@@ -263,7 +269,7 @@
                             <td>${log.studentId?.name || 'Unknown'}</td>
                             <td>
                                 <span class="badge badge-${log.action === 'EXIT' ? 'out' : 'in'}">
-                                    ${log.action === 'EXIT' ? '🚶‍♂️ EXIT' : '🏠 ENTRY'}
+                                    ${log.action === 'EXIT' ? 'EXIT' : 'ENTRY'}
                                 </span>
                             </td>
                             <td><code>${log.gatePassId}</code></td>
@@ -296,9 +302,9 @@
                 if (res.success) {
                     resultDiv.className = 'message success';
                     resultDiv.innerHTML = `
-                        ✅ <strong>${action === 'exit' ? 'EXIT' : 'ENTRY'} Recorded!</strong><br>
+                        <strong>${action === 'exit' ? 'EXIT' : 'ENTRY'} Recorded!</strong><br>
                         Student: ${res.data.student}<br>
-                        ${res.data.isOverstayed ? '⚠️ <strong>Note: Student has overstayed</strong>' : ''}
+                        ${res.data.isOverstayed ? '<strong style="color: var(--danger-color);">Note: Student has overstayed</strong>' : ''}
                     `;
                     document.getElementById('gatePassInput').value = '';
                     loadDashboardStats();
@@ -335,7 +341,7 @@
                             <td>${item.student?.phone || '-'}</td>
                             <td>${utils.formatDateTime(item.fromDateTime)}</td>
                             <td>${utils.formatDateTime(item.toDateTime)}</td>
-                            <td>${item.isOverstayed ? '<span class="badge badge-overstay">⚠️ OVERSTAYED</span>' : '<span class="badge badge-out">OUT</span>'}</td>
+                            <td>${item.isOverstayed ? '<span class="badge badge-overstay">OVERSTAYED</span>' : '<span class="badge badge-out">OUT</span>'}</td>
                             <td><code>${item.gatePassId}</code></td>
                         </tr>
                     `).join('');

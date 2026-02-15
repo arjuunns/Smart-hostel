@@ -10,19 +10,23 @@
     <div class="dashboard">
       <!-- Sidebar -->
       <aside class="sidebar">
-        <h2>🏠 Smart Hostel</h2>
+        <h2><img src="image.png" alt="Smart Hostel" class="logo"> Smart Hostel</h2>
         <div class="user-info">
           <div class="name">Student</div>
           <div class="role">STUDENT</div>
         </div>
         <nav>
-          <a href="#" class="active" onclick="showSection('dashboard')"
-            >📊 Dashboard</a
-          >
-          <a href="#" onclick="showSection('apply-leave')">📝 Apply Leave</a>
-          <a href="#" onclick="showSection('my-leaves')">📋 My Leaves</a>
-          <a href="#" onclick="showSection('attendance')">✅ Attendance</a>
+          <a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a>
+          <a href="#" onclick="showSection('apply-leave')">Apply Leave</a>
+          <a href="#" onclick="showSection('my-leaves')">My Leaves</a>
+          <a href="#" onclick="showSection('attendance')">Attendance</a>
         </nav>
+        <div class="theme-toggle" onclick="toggleTheme()">
+          <svg class="theme-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+          </svg>
+          <span>Toggle Theme</span>
+        </div>
         <div class="logout-btn">
           <button
             id="logoutBtn"
@@ -63,7 +67,7 @@
 
           <!-- Active Gate Pass -->
           <div class="card" id="activeGatePassCard" style="display: none">
-            <h3>🎫 Active Gate Pass</h3>
+            <h3>Active Gate Pass</h3>
             <div id="activeGatePassContent"></div>
           </div>
 
@@ -216,7 +220,7 @@
       onclick="closeQRModal(event)"
     >
       <div class="modal" onclick="event.stopPropagation()">
-        <h3>🎫 Gate Pass QR Code</h3>
+        <h3>Gate Pass QR Code</h3>
         <div id="qrContent"></div>
         <div class="modal-actions">
           <button class="btn btn-secondary" onclick="closeQRModal()">

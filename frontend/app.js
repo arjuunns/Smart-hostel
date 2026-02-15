@@ -2,6 +2,23 @@
 
 const API_BASE_URL = 'https://smart-hostel-rm2c.vercel.app/api';
 
+// Theme Management
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+}
+
+// Initialize theme on page load
+(function initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+})();
+
 // API Helper
 const api = {
     // Get headers with auth token
@@ -354,11 +371,11 @@ const utils = {
     },
 
     getRiskLabel(riskScore) {
-        if (riskScore <= 20) return { text: 'Excellent', icon: '✅', class: 'low' };
-        if (riskScore <= 40) return { text: 'Good', icon: '👍', class: 'low' };
-        if (riskScore <= 60) return { text: 'Moderate', icon: '⚡', class: 'medium' };
-        if (riskScore <= 80) return { text: 'High Risk', icon: '⚠️', class: 'high' };
-        return { text: 'Very High Risk', icon: '🚨', class: 'high' };
+        if (riskScore <= 20) return { text: 'Excellent', class: 'low' };
+        if (riskScore <= 40) return { text: 'Good', class: 'low' };
+        if (riskScore <= 60) return { text: 'Moderate', class: 'medium' };
+        if (riskScore <= 80) return { text: 'High Risk', class: 'high' };
+        return { text: 'Very High Risk', class: 'high' };
     },
 
     getApprovalLikelihood(riskScore) {

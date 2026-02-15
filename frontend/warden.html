@@ -10,21 +10,27 @@
     <div class="dashboard">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <h2>🏠 Smart Hostel</h2>
+            <h2><img src="image.png" alt="Smart Hostel" class="logo"> Smart Hostel</h2>
             <div class="user-info">
                 <div class="name">Warden</div>
                 <div class="role">WARDEN</div>
             </div>
             <nav>
-                <a href="#" class="active" onclick="showSection('dashboard')">📊 Dashboard</a>
-                <a href="#" onclick="showSection('flagged-leaves')">🚩 Flagged Leaves</a>
-                <a href="#" onclick="showSection('pending-leaves')">⏳ Pending Leaves</a>
-                <a href="#" onclick="showSection('all-leaves')">📋 All Leaves</a>
-                <a href="#" onclick="showSection('attendance')">✅ Attendance</a>
-                <a href="#" onclick="showSection('out-students')">🚶 Out Students</a>
-                <a href="#" onclick="showSection('reports')">📈 Reports</a>
-                <a href="#" onclick="showSection('calendar')">📅 Academic Calendar</a>
+                <a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a>
+                <a href="#" onclick="showSection('flagged-leaves')">Flagged Leaves</a>
+                <a href="#" onclick="showSection('pending-leaves')">Pending Leaves</a>
+                <a href="#" onclick="showSection('all-leaves')">All Leaves</a>
+                <a href="#" onclick="showSection('attendance')">Attendance</a>
+                <a href="#" onclick="showSection('out-students')">Out Students</a>
+                <a href="#" onclick="showSection('reports')">Reports</a>
+                <a href="#" onclick="showSection('calendar')">Academic Calendar</a>
             </nav>
+            <div class="theme-toggle" onclick="toggleTheme()">
+                <svg class="theme-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+                <span>Toggle Theme</span>
+            </div>
             <div class="logout-btn">
                 <button class="btn btn-secondary" onclick="utils.logout()" style="width: 100%;">Logout</button>
             </div>
@@ -43,11 +49,11 @@
                     </div>
                     <div class="stat-card stat-card-warning">
                         <div class="stat-value" id="flaggedCount">0</div>
-                        <div class="stat-label">🚩 Flagged Leaves</div>
+                        <div class="stat-label">Flagged Leaves</div>
                     </div>
                     <div class="stat-card stat-card-success">
                         <div class="stat-value" id="autoApprovedCount">0</div>
-                        <div class="stat-label">✅ Auto-Approved</div>
+                        <div class="stat-label">Auto-Approved</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="emergencyCount">0</div>
@@ -65,31 +71,27 @@
 
                 <!-- ML Insights Card -->
                 <div class="card ml-insights-card">
-                    <h3>🤖 AI/ML Insights</h3>
+                    <h3>AI/ML Insights</h3>
                     <div class="ml-insights-grid">
                         <div class="ml-insight">
-                            <div class="ml-insight-icon">📊</div>
                             <div class="ml-insight-content">
                                 <div class="ml-insight-value" id="avgRiskScore">-</div>
                                 <div class="ml-insight-label">Avg Risk Score (Today)</div>
                             </div>
                         </div>
                         <div class="ml-insight">
-                            <div class="ml-insight-icon">🎯</div>
                             <div class="ml-insight-content">
                                 <div class="ml-insight-value" id="autoApprovalRate">-</div>
                                 <div class="ml-insight-label">Auto-Approval Rate</div>
                             </div>
                         </div>
                         <div class="ml-insight">
-                            <div class="ml-insight-icon">⚠️</div>
                             <div class="ml-insight-content">
                                 <div class="ml-insight-value" id="highRiskStudents">-</div>
                                 <div class="ml-insight-label">High-Risk Students</div>
                             </div>
                         </div>
                         <div class="ml-insight">
-                            <div class="ml-insight-icon">📅</div>
                             <div class="ml-insight-content">
                                 <div class="ml-insight-value" id="activeRestrictions">-</div>
                                 <div class="ml-insight-label">Active Restrictions</div>
@@ -100,7 +102,7 @@
 
                 <!-- Flagged Leaves Alert -->
                 <div class="card flagged-alert-card" id="flaggedAlertCard" style="display: none;">
-                    <h3>🚩 Flagged Leaves (Requires Manual Review)</h3>
+                    <h3>Flagged Leaves (Requires Manual Review)</h3>
                     <p class="flagged-description">These leave requests have been flagged by the AI system due to potential concerns.</p>
                     <div class="table-container">
                         <table>
@@ -124,7 +126,7 @@
 
                 <!-- Emergency Leaves Alert -->
                 <div class="card" id="emergencyCard" style="display: none; border-left: 4px solid var(--danger-color);">
-                    <h3>🚨 Emergency Leaves (Requires Immediate Attention)</h3>
+                    <h3>Emergency Leaves (Requires Immediate Attention)</h3>
                     <div class="table-container">
                         <table>
                             <thead>
@@ -166,7 +168,7 @@
 
             <!-- Flagged Leaves Section -->
             <section id="flagged-leaves-section" class="hidden">
-                <h1>🚩 Flagged Leave Requests</h1>
+                <h1>Flagged Leave Requests</h1>
                 <p class="section-description">These leave requests have been automatically flagged by the AI system due to risk factors. Please review carefully.</p>
                 
                 <div class="card">
@@ -385,7 +387,7 @@
 
             <!-- Academic Calendar Section -->
             <section id="calendar-section" class="hidden">
-                <h1>📅 Academic Calendar</h1>
+                <h1>Academic Calendar</h1>
                 <p class="section-description">Manage academic events that affect leave policies. Events like exams, holidays, and restricted periods are considered by the AI when evaluating leave requests.</p>
                 
                 <!-- Add Event Card -->
@@ -476,8 +478,8 @@
                 <textarea id="decisionRemarks" placeholder="Enter remarks (optional)"></textarea>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-success" onclick="submitDecision('APPROVE')">✓ Approve</button>
-                <button class="btn btn-danger" onclick="submitDecision('REJECT')">✗ Reject</button>
+                <button class="btn btn-success" onclick="submitDecision('APPROVE')">Approve</button>
+                <button class="btn btn-danger" onclick="submitDecision('REJECT')">Reject</button>
                 <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
             </div>
         </div>
@@ -994,7 +996,7 @@
                             <td>${item.student?.phone || '-'}</td>
                             <td>${utils.formatDateTime(item.fromDateTime)}</td>
                             <td>${utils.formatDateTime(item.toDateTime)}</td>
-                            <td>${item.isOverstayed ? '<span class="badge badge-overstay">⚠️ OVERSTAYED</span>' : '<span class="badge badge-out">OUT</span>'}</td>
+                            <td>${item.isOverstayed ? '<span class="badge badge-overstay">OVERSTAYED</span>' : '<span class="badge badge-out">OUT</span>'}</td>
                             <td>
                                 <button class="btn btn-sm btn-danger" onclick="forceReturn('${item._id}')">Force Return</button>
                             </td>
