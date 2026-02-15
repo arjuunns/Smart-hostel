@@ -547,3 +547,521 @@ tr:hover {
     font-family: monospace;
     letter-spacing: 2px;
 }
+
+/* ==================== */
+/* ML & AI STYLES */
+/* ==================== */
+
+/* Risk Badges */
+.badge-risk-low {
+    background-color: #10b981;
+    color: white;
+}
+
+.badge-risk-medium {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.badge-risk-high {
+    background-color: #f97316;
+    color: white;
+}
+
+.badge-risk-critical {
+    background-color: #ef4444;
+    color: white;
+}
+
+/* Status Badges - Extended */
+.badge-auto_approved, .badge-auto-approved {
+    background-color: #059669;
+    color: white;
+}
+
+.badge-flagged {
+    background-color: #dc2626;
+    color: white;
+}
+
+/* ML Risk Profile Card */
+.ml-profile-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #bae6fd;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.ml-profile-card h4 {
+    color: #0369a1;
+    margin-bottom: 16px;
+    font-size: 1.1rem;
+}
+
+/* Risk Meter */
+.risk-meter {
+    background: #e5e7eb;
+    border-radius: 10px;
+    height: 16px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.risk-meter-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease, background-color 0.5s ease;
+}
+
+.risk-score-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.risk-score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+/* Tips */
+.tips-header {
+    font-weight: 600;
+    color: #0369a1;
+    margin-bottom: 8px;
+}
+
+.tips-list {
+    list-style: none;
+    padding: 0;
+}
+
+.tips-list li {
+    padding: 6px 0;
+    padding-left: 20px;
+    position: relative;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.tips-list li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: #0369a1;
+}
+
+.tip-success {
+    color: #059669;
+    font-weight: 500;
+}
+
+/* ML Prediction Preview */
+.ml-prediction-box {
+    background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+    border: 1px solid #fde047;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.ml-prediction-box.hidden {
+    display: none;
+}
+
+.ml-prediction-box h4 {
+    color: #a16207;
+    margin-bottom: 12px;
+}
+
+.prediction-result {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.prediction-main {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.prediction-likelihood {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.prediction-likelihood.likelihood-high {
+    background: #dcfce7;
+    border: 1px solid #86efac;
+}
+
+.prediction-likelihood.likelihood-medium {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+}
+
+.prediction-likelihood.likelihood-low {
+    background: #fce7f3;
+    border: 1px solid #f9a8d4;
+}
+
+.prediction-likelihood.likelihood-very-low {
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+}
+
+.likelihood-icon {
+    font-size: 2rem;
+}
+
+.likelihood-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.likelihood-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.likelihood-value {
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.likelihood-percent {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-left: auto;
+}
+
+.prediction-score {
+    flex: 1;
+    min-width: 200px;
+}
+
+.score-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.score-bar {
+    background: #e5e7eb;
+    border-radius: 8px;
+    height: 12px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.score-fill {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.3s ease;
+}
+
+.score-value {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+.prediction-warnings, .prediction-tips, .prediction-positives {
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.prediction-warnings {
+    background: #fef2f2;
+    border-left: 3px solid #ef4444;
+}
+
+.prediction-tips {
+    background: #eff6ff;
+    border-left: 3px solid #3b82f6;
+}
+
+.prediction-positives {
+    background: #f0fdf4;
+    border-left: 3px solid #22c55e;
+}
+
+.prediction-warnings ul, .prediction-tips ul, .prediction-positives ul {
+    list-style: disc;
+    padding-left: 20px;
+    margin-top: 8px;
+}
+
+.prediction-message {
+    font-style: italic;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+}
+
+/* Restrictions Alert */
+.restrictions-alert {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.restrictions-alert.hidden {
+    display: none;
+}
+
+.restrictions-alert h4 {
+    color: #dc2626;
+    margin-bottom: 8px;
+}
+
+.restriction-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #fecaca;
+}
+
+.restriction-item:last-child {
+    border-bottom: none;
+}
+
+/* Profile Stats Grid */
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 12px;
+}
+
+.profile-stat {
+    text-align: center;
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.profile-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.profile-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+/* ML Insights Card (Warden) */
+.ml-insights-card {
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+    border: 1px solid #c4b5fd;
+}
+
+.ml-insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.ml-insight {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.ml-insight-icon {
+    font-size: 1.5rem;
+}
+
+.ml-insight-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.ml-insight-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Flagged Alert Card */
+.flagged-alert-card {
+    border-left: 4px solid #dc2626;
+    background: #fef2f2;
+}
+
+.flagged-description {
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+}
+
+.flagged-row {
+    background: #fff1f2;
+}
+
+.ai-reason {
+    max-width: 200px;
+    font-size: 0.85rem;
+    color: #dc2626;
+}
+
+.view-all-link {
+    margin-top: 16px;
+    text-align: right;
+}
+
+.view-all-link a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.view-all-link a:hover {
+    text-decoration: underline;
+}
+
+/* Stat Card Variants */
+.stat-card-warning {
+    border-left: 3px solid #f59e0b;
+}
+
+.stat-card-success {
+    border-left: 3px solid #10b981;
+}
+
+/* Section Description */
+.section-description {
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+/* Calendar Badge Types */
+.badge-calendar-exam {
+    background: #dc2626;
+    color: white;
+}
+
+.badge-calendar-exam_prep {
+    background: #f97316;
+    color: white;
+}
+
+.badge-calendar-holiday {
+    background: #10b981;
+    color: white;
+}
+
+.badge-calendar-restricted {
+    background: #7c3aed;
+    color: white;
+}
+
+.badge-calendar-cultural {
+    background: #ec4899;
+    color: white;
+}
+
+.badge-calendar-academic {
+    background: #3b82f6;
+    color: white;
+}
+
+.badge-calendar-other {
+    background: #6b7280;
+    color: white;
+}
+
+/* Policy Badges */
+.badge-policy-blocked {
+    background: #dc2626;
+    color: white;
+}
+
+.badge-policy-flagged {
+    background: #f97316;
+    color: white;
+}
+
+.badge-policy-discouraged {
+    background: #f59e0b;
+    color: white;
+}
+
+.badge-policy-normal {
+    background: #6b7280;
+    color: white;
+}
+
+.badge-policy-encouraged {
+    background: #10b981;
+    color: white;
+}
+
+/* Auto-approved message */
+.auto-approved-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+}
+
+.auto-approve-icon {
+    font-size: 2rem;
+}
+
+.gate-pass-info {
+    background: #f0fdf4;
+    padding: 8px 16px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.flagged-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+}
+
+.flag-icon {
+    font-size: 2rem;
+}
+
+.flag-reason {
+    font-size: 0.85rem;
+    color: #dc2626;
+    font-style: italic;
+}
+
+/* Warning message */
+.message.warning {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}

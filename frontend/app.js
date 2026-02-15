@@ -1,6 +1,6 @@
 // Smart Hostel - Main JavaScript
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://smart-hostel-rm2c.vercel.app/api';
 
 // API Helper
 const api = {
@@ -196,6 +196,122 @@ const api = {
         const params = new URLSearchParams({ ...filters, format: 'csv' }).toString();
         const token = localStorage.getItem('token');
         window.open(`${API_BASE_URL}${endpoint}?${params}&token=${token}`, '_blank');
+    },
+
+    // ===== ML PREDICTION ENDPOINTS =====
+
+    // Get ML prediction before applying leave
+    async predictLeave(leaveData) {
+        return this.request('/ml/predict', {
+            method: 'POST',
+            body: JSON.stringify(leaveData)
+        });
+    },
+
+    // Get ML prediction for existing leave
+    async getPredictionForLeave(leaveId) {
+        return this.request(`/ml/predict/${leaveId}`, {
+            method: 'POST'
+        });
+    },
+
+    // Get batch predictions for all pending leaves
+    async getBatchPredictions() {
+        return this.request('/ml/predict-batch', {
+            method: 'POST'
+        });
+    },
+
+    // Get student patterns
+    async getStudentPatterns(studentId) {
+        return this.request(`/ml/patterns/${studentId}`);
+    },
+
+    // Get ML dashboard
+    async getMLDashboard() {
+        return this.request('/ml/dashboard');
+    },
+
+    // Get model info
+    async getModelInfo() {
+        return this.request('/ml/model-info');
+    },
+
+    // ===== STATS ENDPOINTS =====
+
+    // Get my stats
+    async getMyStats() {
+        return this.request('/stats/my-stats');
+    },
+
+    // Get my risk assessment
+    async getMyRisk() {
+        return this.request('/stats/my-risk');
+    },
+
+    // Get student stats (warden)
+    async getStudentStats(studentId) {
+        return this.request(`/stats/student/${studentId}`);
+    },
+
+    // Get high risk students
+    async getHighRiskStudents() {
+        return this.request('/stats/high-risk');
+    },
+
+    // Get risk distribution
+    async getRiskDistribution() {
+        return this.request('/stats/distribution');
+    },
+
+    // ===== CALENDAR ENDPOINTS =====
+
+    // Get current restrictions
+    async getCurrentRestrictions() {
+        return this.request('/calendar/current-restrictions');
+    },
+
+    // Get upcoming restrictions
+    async getUpcomingRestrictions(days = 14) {
+        return this.request(`/calendar/upcoming-restrictions?days=${days}`);
+    },
+
+    // Analyze dates
+    async analyzeDates(fromDate, toDate) {
+        return this.request('/calendar/analyze-dates', {
+            method: 'POST',
+            body: JSON.stringify({ fromDate, toDate })
+        });
+    },
+
+    // Get all calendar events
+    async getCalendarEvents() {
+        return this.request('/calendar/all');
+    },
+
+    // Create calendar event
+    async createCalendarEvent(eventData) {
+        return this.request('/calendar/event', {
+            method: 'POST',
+            body: JSON.stringify(eventData)
+        });
+    },
+
+    // Delete calendar event
+    async deleteCalendarEvent(eventId) {
+        return this.request(`/calendar/event/${eventId}`, {
+            method: 'DELETE'
+        });
+    },
+
+    // Get flagged leaves
+    async getFlaggedLeaves() {
+        return this.request('/leaves/flagged');
+    },
+
+    // Get auto-approved leaves
+    async getAutoApprovedLeaves() {
+        return this.request('/leaves/auto-approved');
     }
 };
 
@@ -224,6 +340,33 @@ const utils = {
     getStatusBadge(status) {
         const statusLower = status.toLowerCase().replace('_', '');
         return `<span class="badge badge-${statusLower}">${status}</span>`;
+    },
+
+    getRiskBadge(riskCategory, riskScore) {
+        const categoryLower = riskCategory?.toLowerCase() || 'low';
+        return `<span class="badge badge-risk-${categoryLower}">${riskCategory || 'LOW'} (${riskScore || 0})</span>`;
+    },
+
+    getRiskColor(riskScore) {
+        if (riskScore <= 30) return '#10b981'; // Green
+        if (riskScore <= 60) return '#f59e0b'; // Yellow
+        return '#ef4444'; // Red
+    },
+
+    getRiskLabel(riskScore) {
+        if (riskScore <= 20) return { text: 'Excellent', icon: '✅', class: 'low' };
+        if (riskScore <= 40) return { text: 'Good', icon: '👍', class: 'low' };
+        if (riskScore <= 60) return { text: 'Moderate', icon: '⚡', class: 'medium' };
+        if (riskScore <= 80) return { text: 'High Risk', icon: '⚠️', class: 'high' };
+        return { text: 'Very High Risk', icon: '🚨', class: 'high' };
+    },
+
+    getApprovalLikelihood(riskScore) {
+        if (riskScore <= 20) return { text: 'Very Likely', percent: '95%', class: 'high' };
+        if (riskScore <= 40) return { text: 'Likely', percent: '80%', class: 'high' };
+        if (riskScore <= 60) return { text: 'Moderate', percent: '60%', class: 'medium' };
+        if (riskScore <= 80) return { text: 'Unlikely', percent: '30%', class: 'low' };
+        return { text: 'Very Unlikely', percent: '10%', class: 'low' };
     },
 
     getCurrentUser() {

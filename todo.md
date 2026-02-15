@@ -249,3 +249,60 @@ Criteria:
 - Attendance marks ON_LEAVE automatically
 - Live out list works
 - Reports generate correctly
+
+---
+
+## Phase 9 — AI/ML Smart Leave Approval System ✅
+
+### ✅ Module 1: Data Collection & Storage Infrastructure
+- Enhanced Leave model with ML fields (riskScore, riskCategory, predictionFactors, aiDecision, aiDecisionReason, returnedOnTime, lateReturnHours)
+- Enhanced Attendance model with tracking fields (checkInTime, checkOutTime, curfewViolation, violationMinutes)
+- Created StudentStats model for aggregated ML features (attendance %, reliability score, leave metrics, violation counts, pattern metrics)
+- Created StatsService with risk calculation and weighted scoring
+- Created stats API routes (/api/stats/my-stats, /my-risk, /student/:id, /high-risk, /distribution)
+✅ Test:
+- Student stats aggregate correctly
+- Risk scores calculate from historical data
+
+### ✅ Module 2: Academic Calendar Integration
+- Created AcademicCalendar model (events, policies, affected leave types, risk modifiers)
+- Created CalendarService with analyzeLeaveDates, getCalendarScore, suggestLeaveDates
+- Created calendar API routes (/api/calendar/current-restrictions, /analyze-dates, /suggest-dates, /all, /event)
+✅ Test:
+- Calendar events affect leave risk scoring
+- Blocked dates prevent leave applications
+
+### ✅ Module 3: ML Prediction Model
+- Created MLPredictionService with feature extraction and risk scoring
+- Weight distribution: Attendance (18%), Reliability (15%), Violations (12%), Calendar (15%), Exam Proximity (10%), Frequency (8%), History (7%), Duration (5%), Leave Type (5%), Timing (5%)
+- Confidence calculation based on data quality and factor consistency
+- Pattern detection (weekend extensions, leave clustering, frequency anomalies)
+- Decision thresholds: AUTO_APPROVE ≤20 (confidence ≥60%), MANUAL_REVIEW 21-60, FLAG 61-80, REJECT >80
+- Created ML API routes (/api/ml/predict, /predict/:leaveId, /patterns/:studentId, /model-info, /dashboard)
+- Integrated ML prediction into leave application flow (auto-sets status to AUTO_APPROVED/FLAGGED/PENDING)
+✅ Test:
+- Predictions return with risk scores, categories, and explanations
+- Low-risk leaves auto-approved with gate pass
+- High-risk leaves flagged for manual review
+
+### ✅ Module 4: Auto-Approval & Flagging System UI
+- Updated student.html:
+  - ML Risk Profile Card in dashboard (risk meter, score, tips)
+  - ML Prediction Preview in apply leave form (real-time prediction before submit)
+  - Auto-approved/flagged message handling
+  - Profile stats display (attendance, reliability, violations)
+- Updated warden.html:
+  - Flagged Leaves section with AI reasons
+  - ML Insights card (avg risk score, auto-approval rate, high-risk students)
+  - Academic Calendar management section
+  - Risk indicators in leave tables
+- Updated app.js:
+  - ML API methods (predictLeave, getMyStats, getMyRisk, getMLDashboard)
+  - Calendar API methods (getCalendarEvents, createCalendarEvent, deleteCalendarEvent)
+  - ML utility functions (getRiskBadge, getRiskColor, getRiskLabel, getApprovalLikelihood)
+- Updated style.css with ML-specific styles (risk badges, prediction box, meters, calendar badges)
+✅ Test:
+- Students see risk profile on dashboard
+- Real-time prediction preview before applying leave
+- Wardens see flagged leaves highlighted
+- Calendar events manageable by warden
