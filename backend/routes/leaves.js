@@ -4,6 +4,8 @@ const Leave = require('../models/Leave');
 const Attendance = require('../models/Attendance');
 const AuditLog = require('../models/AuditLog');
 const { protect, authorize } = require('../middleware/auth');
+const MLPredictionService = require('../services/mlPredictionService');
+const StatsService = require('../services/statsService');
 
 // Helper: Mock parent notification
 const notifyParent = (action, studentName, leaveDetails) => {
@@ -11,7 +13,7 @@ const notifyParent = (action, studentName, leaveDetails) => {
 };
 
 // @route   POST /api/leaves/apply
-// @desc    Student applies for leave
+// @desc    Student applies for leave with ML prediction
 // @access  Private (Student)
 router.post('/apply', protect, authorize('student'), async (req, res) => {
     try {
@@ -29,18 +31,103 @@ router.post('/apply', protect, authorize('student'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'Cannot apply leave for past dates' });
         }
 
+        // Generate ML prediction
+        const leaveRequest = {
+            studentId: req.user._id,
+            fromDate: from,
+            toDate: to,
+            leaveType: leaveType || 'REGULAR',
+            reason: reason || ''
+        };
+
+        const studentInfo = {
+            hostelBlock: req.user.hostelBlock,
+            course: req.user.course,
+            year: req.user.year
+        };
+
+        let prediction = null;
+        let initialStatus = 'PENDING';
+        let aiDecision = null;
+        let aiDecisionReason = null;
+
+        try {
+            prediction = await MLPredictionService.predictLeaveApproval(leaveRequest, studentInfo);
+            
+            // Set status based on ML decision
+            if (prediction.prediction.decision === 'AUTO_APPROVE') {
+                initialStatus = 'AUTO_APPROVED';
+                aiDecision = 'AUTO_APPROVED';
+                aiDecisionReason = prediction.recommendation.reason;
+            } else if (prediction.prediction.decision === 'FLAG' || prediction.prediction.decision === 'REJECT') {
+                initialStatus = 'FLAGGED';
+                aiDecision = 'FLAGGED';
+                aiDecisionReason = prediction.recommendation.reason;
+            } else {
+                aiDecision = 'MANUAL';
+                aiDecisionReason = 'Standard review required';
+            }
+        } catch (mlError) {
+            console.error('ML Prediction error:', mlError);
+            // Continue without ML prediction
+        }
+
         const leave = await Leave.create({
             studentId: req.user._id,
             leaveType,
             fromDateTime: from,
             toDateTime: to,
-            reason
+            reason,
+            status: initialStatus,
+            // ML-related fields
+            riskScore: prediction?.prediction?.riskScore || null,
+            riskCategory: prediction?.prediction?.riskCategory || null,
+            predictionFactors: prediction?.prediction ? {
+                attendanceScore: prediction.features.student.attendancePercentage,
+                historyScore: prediction.featureScores?.history?.risk || 0,
+                calendarScore: prediction.features.calendar.calendarScore,
+                patternScore: prediction.featureScores?.frequency?.risk || 0
+            } : null,
+            aiDecision,
+            aiDecisionReason
         });
+
+        // Generate gate pass if auto-approved
+        if (initialStatus === 'AUTO_APPROVED') {
+            leave.generateGatePass();
+            leave.approvedAt = new Date();
+            await leave.save();
+            
+            // Update student stats
+            await StatsService.updateLeaveStats(req.user._id);
+        }
+
+        // Prepare response
+        const responseData = {
+            leave,
+            mlPrediction: prediction ? {
+                decision: prediction.prediction.decision,
+                riskScore: prediction.prediction.riskScore,
+                riskCategory: prediction.prediction.riskCategory,
+                confidence: prediction.prediction.confidence,
+                message: prediction.recommendation.suggestedResponse,
+                warnings: prediction.explanation.negativeFactors,
+                positives: prediction.explanation.positiveFactors
+            } : null
+        };
+
+        // Determine response message
+        let message = 'Leave application submitted successfully';
+        if (initialStatus === 'AUTO_APPROVED') {
+            message = '🎉 Leave auto-approved based on your excellent record!';
+        } else if (initialStatus === 'FLAGGED') {
+            message = 'Leave application submitted. Requires warden review due to calendar/history factors.';
+        }
 
         res.status(201).json({
             success: true,
-            message: 'Leave application submitted successfully',
-            data: leave
+            message,
+            data: responseData
         });
     } catch (error) {
         console.error('Apply leave error:', error);
@@ -68,18 +155,35 @@ router.get('/mine', protect, authorize('student'), async (req, res) => {
 });
 
 // @route   GET /api/leaves/pending
-// @desc    Get all pending leaves (for warden/admin)
+// @desc    Get all pending leaves (for warden/admin) - includes FLAGGED
 // @access  Private (Warden/Admin)
 router.get('/pending', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
-        const leaves = await Leave.find({ status: 'PENDING' })
+        const leaves = await Leave.find({ status: { $in: ['PENDING', 'FLAGGED'] } })
             .sort({ createdAt: -1 })
             .populate('studentId', 'name email hostelBlock roomNo phone');
+
+        // Add ML risk info to response
+        const leavesWithRisk = leaves.map(leave => ({
+            ...leave.toObject(),
+            mlInfo: {
+                riskScore: leave.riskScore,
+                riskCategory: leave.riskCategory,
+                aiDecision: leave.aiDecision,
+                aiDecisionReason: leave.aiDecisionReason,
+                predictionFactors: leave.predictionFactors
+            }
+        }));
 
         res.json({
             success: true,
             count: leaves.length,
-            data: leaves
+            summary: {
+                pending: leaves.filter(l => l.status === 'PENDING').length,
+                flagged: leaves.filter(l => l.status === 'FLAGGED').length,
+                highRisk: leaves.filter(l => l.riskCategory === 'HIGH').length
+            },
+            data: leavesWithRisk
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -112,6 +216,54 @@ router.get('/all', protect, authorize('warden', 'admin'), async (req, res) => {
     }
 });
 
+// @route   GET /api/leaves/flagged
+// @desc    Get AI-flagged leaves requiring review (for warden/admin)
+// @access  Private (Warden/Admin)
+router.get('/flagged', protect, authorize('warden', 'admin'), async (req, res) => {
+    try {
+        const leaves = await Leave.find({ status: 'FLAGGED' })
+            .sort({ riskScore: -1, createdAt: -1 })
+            .populate('studentId', 'name email hostelBlock roomNo phone');
+
+        res.json({
+            success: true,
+            count: leaves.length,
+            data: leaves.map(leave => ({
+                ...leave.toObject(),
+                mlInfo: {
+                    riskScore: leave.riskScore,
+                    riskCategory: leave.riskCategory,
+                    aiDecision: leave.aiDecision,
+                    aiDecisionReason: leave.aiDecisionReason,
+                    predictionFactors: leave.predictionFactors
+                }
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// @route   GET /api/leaves/auto-approved
+// @desc    Get auto-approved leaves (for audit/warden/admin)
+// @access  Private (Warden/Admin)
+router.get('/auto-approved', protect, authorize('warden', 'admin'), async (req, res) => {
+    try {
+        const leaves = await Leave.find({ status: 'AUTO_APPROVED' })
+            .sort({ createdAt: -1 })
+            .populate('studentId', 'name email hostelBlock roomNo phone')
+            .limit(50);
+
+        res.json({
+            success: true,
+            count: leaves.length,
+            data: leaves
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // @route   GET /api/leaves/emergency
 // @desc    Get emergency leaves (for warden/admin)
 // @access  Private (Warden/Admin)
@@ -119,7 +271,7 @@ router.get('/emergency', protect, authorize('warden', 'admin'), async (req, res)
     try {
         const leaves = await Leave.find({ 
             leaveType: 'EMERGENCY',
-            status: 'PENDING'
+            status: { $in: ['PENDING', 'FLAGGED'] }
         })
             .sort({ createdAt: -1 })
             .populate('studentId', 'name email hostelBlock roomNo phone');
@@ -151,7 +303,7 @@ router.patch('/:id/decision', protect, authorize('warden', 'admin'), async (req,
             return res.status(404).json({ success: false, message: 'Leave not found' });
         }
 
-        if (leave.status !== 'PENDING') {
+        if (leave.status !== 'PENDING' && leave.status !== 'FLAGGED') {
             return res.status(400).json({ success: false, message: 'Leave is already processed' });
         }
 
@@ -188,6 +340,9 @@ router.patch('/:id/decision', protect, authorize('warden', 'admin'), async (req,
         }
 
         await leave.save();
+
+        // Update student stats after decision
+        await StatsService.updateLeaveStats(leave.studentId._id);
 
         // Create audit log
         await AuditLog.create({

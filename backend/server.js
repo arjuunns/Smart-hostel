@@ -22,6 +22,9 @@ app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/gate', require('./routes/gate'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/stats', require('./routes/stats'));
+app.use('/api/calendar', require('./routes/calendar'));
+app.use('/api/ml', require('./routes/ml'));
 
 // Health check route
 app.get('/', (req, res) => {
@@ -33,7 +36,10 @@ app.get('/', (req, res) => {
             leaves: '/api/leaves',
             gate: '/api/gate',
             attendance: '/api/attendance',
-            reports: '/api/reports'
+            reports: '/api/reports',
+            stats: '/api/stats',
+            calendar: '/api/calendar',
+            ml: '/api/ml'
         }
     });
 });

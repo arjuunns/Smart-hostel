@@ -26,7 +26,7 @@ const leaveSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['PENDING', 'APPROVED', 'REJECTED'],
+        enum: ['PENDING', 'APPROVED', 'REJECTED', 'AUTO_APPROVED', 'FLAGGED'],
         default: 'PENDING'
     },
     approvedBy: {
@@ -49,10 +49,60 @@ const leaveSchema = new mongoose.Schema({
         type: String,
         enum: ['IN', 'OUT'],
         default: 'IN'
+    },
+    
+    // ===== ML-RELATED FIELDS =====
+    // Risk assessment
+    riskScore: {
+        type: Number,
+        min: 0,
+        max: 100,
+        default: null
+    },
+    riskCategory: {
+        type: String,
+        enum: ['LOW', 'MEDIUM', 'HIGH'],
+        default: null
+    },
+    // Factors that contributed to the risk score
+    predictionFactors: {
+        attendanceScore: { type: Number, default: null },
+        historyScore: { type: Number, default: null },
+        calendarScore: { type: Number, default: null },
+        patternScore: { type: Number, default: null }
+    },
+    // Was this auto-approved or flagged by AI?
+    aiDecision: {
+        type: String,
+        enum: ['AUTO_APPROVED', 'FLAGGED', 'MANUAL', null],
+        default: null
+    },
+    aiDecisionReason: {
+        type: String,
+        default: null
+    },
+    
+    // ===== RETURN TRACKING =====
+    returnedOnTime: {
+        type: Boolean,
+        default: null
+    },
+    actualReturnDateTime: {
+        type: Date,
+        default: null
+    },
+    lateReturnHours: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true
 });
+
+// Indexes for faster ML queries
+leaveSchema.index({ studentId: 1, createdAt: -1 });
+leaveSchema.index({ status: 1 });
+leaveSchema.index({ riskCategory: 1 });
 
 // Generate gate pass ID when leave is approved
 leaveSchema.methods.generateGatePass = function() {
