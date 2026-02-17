@@ -215,9 +215,9 @@ const api = {
         window.open(`${API_BASE_URL}${endpoint}?${params}&token=${token}`, '_blank');
     },
 
-    // ===== ML PREDICTION ENDPOINTS =====
+    // ===== PREDICTION ENDPOINTS =====
 
-    // Get ML prediction before applying leave
+    // Get prediction before applying leave
     async predictLeave(leaveData) {
         return this.request('/ml/predict', {
             method: 'POST',
@@ -225,7 +225,7 @@ const api = {
         });
     },
 
-    // Get ML prediction for existing leave
+    // Get prediction for existing leave
     async getPredictionForLeave(leaveId) {
         return this.request(`/ml/predict/${leaveId}`, {
             method: 'POST'
@@ -244,8 +244,8 @@ const api = {
         return this.request(`/ml/patterns/${studentId}`);
     },
 
-    // Get ML dashboard
-    async getMLDashboard() {
+    // Get system dashboard
+    async getPredictionDashboard() {
         return this.request('/ml/dashboard');
     },
 
