@@ -1162,6 +1162,15 @@
 
         // ===== MongoDB Analytics Functions =====
 
+        function valueOrFallback(value, fallback = '-') {
+            return value ?? fallback;
+        }
+
+        function formatNumber(value, decimals = 0, fallback = '0') {
+            const numberValue = Number(value);
+            return Number.isFinite(numberValue) ? numberValue.toFixed(decimals) : fallback;
+        }
+
         // Switch analytics tabs
         function switchAnalyticsTab(tabName) {
             // Hide all tabs
@@ -1198,14 +1207,22 @@
                     return;
                 }
 
-                tbody.innerHTML = res.data.map(item => `
+                tbody.innerHTML = res.data.map(item => {
+                    const riskCategory = item.riskCategory ?? item._id ?? 'N/A';
+                    const studentCount = item.studentCount ?? item.count ?? 0;
+                    const averageRiskScore = item.averageRiskScore ?? item.avgRiskScore;
+                    const minRiskScore = item.minRiskScore ?? 0;
+                    const maxRiskScore = item.maxRiskScore ?? 0;
+
+                    return `
                     <tr>
-                        <td><strong>${item._id || 'N/A'}</strong></td>
-                        <td>${item.count}</td>
-                        <td>${item.avgRiskScore?.toFixed(2)}</td>
-                        <td>${item.minRiskScore?.toFixed(2)} - ${item.maxRiskScore?.toFixed(2)}</td>
+                        <td><strong>${riskCategory}</strong></td>
+                        <td>${studentCount}</td>
+                        <td>${formatNumber(averageRiskScore, 2)}</td>
+                        <td>${formatNumber(minRiskScore, 2)} - ${formatNumber(maxRiskScore, 2)}</td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             } catch (error) {
                 console.error('Error loading risk distribution:', error);
                 document.getElementById('riskDistributionTable').innerHTML = 
@@ -1224,15 +1241,20 @@
                     return;
                 }
 
-                tbody.innerHTML = res.data.map(item => `
+                tbody.innerHTML = res.data.map(item => {
+                    const averageDurationDays = item.averageDurationDays ?? item.avgDurationDays;
+                    const totalDaysCovered = item.totalDaysCovered ?? item.totalDays;
+
+                    return `
                     <tr>
                         <td>${item.leaveType || 'N/A'}</td>
                         <td><span class="badge badge-${(item.status || '').toLowerCase().replace('_', '')}">${item.status || 'UNKNOWN'}</span></td>
-                        <td>${item.totalRequests}</td>
-                        <td>${item.avgDurationDays?.toFixed(2)}</td>
-                        <td>${item.totalDays}</td>
+                        <td>${item.totalRequests ?? 0}</td>
+                        <td>${formatNumber(averageDurationDays, 2)}</td>
+                        <td>${formatNumber(totalDaysCovered, 2)}</td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             } catch (error) {
                 console.error('Error loading leave statistics:', error);
                 document.getElementById('leaveStatisticsTable').innerHTML = 
@@ -1252,13 +1274,18 @@
                 }
 
                 tbody.innerHTML = res.data.map(item => {
-                    const riskBreakdown = `<small>H:${item.highRiskCount || 0} M:${item.mediumRiskCount || 0} L:${item.lowRiskCount || 0}</small>`;
+                    const averageAttendancePercentage = item.averageAttendancePercentage ?? item.avgAttendancePercentage;
+                    const averageRiskScore = item.averageRiskScore ?? item.avgRiskScore;
+                    const highRiskStudents = item.highRiskStudents ?? item.highRiskCount ?? 0;
+                    const mediumRiskStudents = item.mediumRiskStudents ?? item.mediumRiskCount ?? 0;
+                    const lowRiskStudents = item.lowRiskStudents ?? item.lowRiskCount ?? 0;
+                    const riskBreakdown = `<small>H:${highRiskStudents} M:${mediumRiskStudents} L:${lowRiskStudents}</small>`;
                     return `
                         <tr>
                             <td><strong>${item.hostelBlock || 'N/A'}</strong></td>
-                            <td>${item.totalStudents}</td>
-                            <td>${item.avgAttendancePercentage?.toFixed(1)}%</td>
-                            <td>${item.avgRiskScore?.toFixed(2)}</td>
+                            <td>${item.totalStudents ?? 0}</td>
+                            <td>${formatNumber(averageAttendancePercentage, 1)}%</td>
+                            <td>${formatNumber(averageRiskScore, 2)}</td>
                             <td>${riskBreakdown}</td>
                         </tr>
                     `;
@@ -1281,17 +1308,22 @@
                     return;
                 }
 
-                tbody.innerHTML = res.data.map((item, index) => `
+                tbody.innerHTML = res.data.map((item, index) => {
+                    const approvedLeaves = item.totalLeavesApproved ?? item.approvedLeavesCount ?? 0;
+                    const lateReturns = item.lateReturns ?? item.lateReturnsCount ?? 0;
+
+                    return `
                     <tr>
                         <td><strong>#${index + 1}</strong></td>
-                        <td>${item.studentName || 'N/A'}</td>
-                        <td>${item.hostelBlock || '-'}</td>
-                        <td><strong>${item.returnReliabilityScore?.toFixed(1)}%</strong></td>
-                        <td>${item.attendancePercentage?.toFixed(1)}%</td>
-                        <td>${item.approvedLeavesCount}</td>
-                        <td>${item.lateReturnsCount}</td>
+                        <td>${valueOrFallback(item.studentName, 'N/A')}</td>
+                        <td>${valueOrFallback(item.hostelBlock, '-')}</td>
+                        <td><strong>${formatNumber(item.returnReliabilityScore, 1)}%</strong></td>
+                        <td>${formatNumber(item.attendancePercentage, 1)}%</td>
+                        <td>${approvedLeaves}</td>
+                        <td>${lateReturns}</td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             } catch (error) {
                 console.error('Error loading top students:', error);
                 document.getElementById('topStudentsTable').innerHTML = 
