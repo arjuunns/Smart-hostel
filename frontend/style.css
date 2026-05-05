@@ -1299,6 +1299,96 @@ tr:hover {
     gap: 8px;
 }
 
+/* ============================= */
+/* MONGODB ANALYTICS DASHBOARD */
+/* ============================= */
+
+/* Analytics Tab Content */
+.analytics-tab-content {
+    display: block;
+}
+
+.analytics-tab-content.hidden {
+    display: none;
+}
+
+/* Analytics specific styles */
+#mongodb-analytics-section {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#mongodb-analytics-section .tabs {
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+#mongodb-analytics-section .tab {
+    border-radius: 8px 8px 0 0;
+    border-bottom: none;
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-bottom: 2px solid transparent;
+}
+
+#mongodb-analytics-section .tab.active {
+    background: var(--card-bg);
+    border-bottom-color: var(--primary-color);
+}
+
+#mongodb-analytics-section .tab:hover {
+    background: var(--card-bg);
+}
+
+/* Analytics table enhancements */
+#mongodb-analytics-section table tr:hover {
+    background-color: rgba(79, 70, 229, 0.05);
+}
+
+#mongodb-analytics-section table tbody tr td {
+    vertical-align: middle;
+}
+
+#mongodb-analytics-section table tbody tr td strong {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+#mongodb-analytics-section table tbody tr td small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 2px;
+}
+
+/* Refresh button styling */
+#mongodb-analytics-section .btn-primary {
+    width: auto;
+    display: inline-block;
+}
+
+#mongodb-analytics-section .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Empty state for analytics */
+#mongodb-analytics-section .empty-state {
+    padding: 60px 40px;
+    background: var(--hover-bg);
+    border-radius: 8px;
+}
+
 .flag-icon {
     font-size: 2rem;
 }

@@ -329,6 +329,28 @@ const api = {
     // Get auto-approved leaves
     async getAutoApprovedLeaves() {
         return this.request('/leaves/auto-approved');
+    },
+
+    // ===== MONGODB AGGREGATION ENDPOINTS =====
+
+    // Get risk distribution aggregation
+    async getRiskDistributionAggregation() {
+        return this.request('/stats/aggregation/risk-distribution');
+    },
+
+    // Get leave statistics aggregation
+    async getLeaveStatisticsAggregation() {
+        return this.request('/stats/aggregation/leave-statistics');
+    },
+
+    // Get attendance by hostel aggregation
+    async getAttendanceByHostelAggregation() {
+        return this.request('/stats/aggregation/attendance-by-hostel');
+    },
+
+    // Get top reliable students aggregation
+    async getTopReliableStudentsAggregation(limit = 10) {
+        return this.request(`/stats/aggregation/top-reliable-students?limit=${limit}`);
     }
 };
 

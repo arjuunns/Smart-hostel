@@ -24,6 +24,7 @@
                 <a href="#" onclick="showSection('out-students')">Out Students</a>
                 <a href="#" onclick="showSection('reports')">Reports</a>
                 <a href="#" onclick="showSection('calendar')">Academic Calendar</a>
+                <a href="#" onclick="showSection('mongodb-analytics')">📊 MongoDB Analytics</a>
             </nav>
             <div class="theme-toggle" onclick="toggleTheme()">
                 <svg class="theme-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -463,6 +464,124 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </section>
+
+            <!-- MongoDB Analytics Section -->
+            <section id="mongodb-analytics-section" class="hidden">
+                <h1>Analytics</h1>
+                <p class="section-description">Advanced MongoDB aggregation pipeline results for data analysis and decision making.</p>
+                
+                <!-- Tabs -->
+                <div class="tabs">
+                    <div class="tab active" onclick="switchAnalyticsTab('risk-distribution')">Risk Distribution</div>
+                    <div class="tab" onclick="switchAnalyticsTab('leave-statistics')">Leave Statistics</div>
+                    <div class="tab" onclick="switchAnalyticsTab('attendance-hostel')">Attendance by Hostel</div>
+                    <div class="tab" onclick="switchAnalyticsTab('top-students')">Top Students</div>
+                </div>
+
+                <!-- Risk Distribution Tab -->
+                <div id="risk-distribution-tab" class="analytics-tab-content">
+                    <div class="card">
+                        <h3>Student Risk Distribution</h3>
+                        <p class="section-description">Breakdown of students by risk category using MongoDB $group aggregation</p>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Risk Category</th>
+                                        <th>Student Count</th>
+                                        <th>Average Risk Score</th>
+                                        <th>Risk Range</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="riskDistributionTable">
+                                    <tr><td colspan="4" class="empty-state">Loading aggregation data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leave Statistics Tab -->
+                <div id="leave-statistics-tab" class="analytics-tab-content hidden">
+                    <div class="card">
+                        <h3>Leave Statistics by Type & Status</h3>
+                        <p class="section-description">Aggregated leave data with computed averages using $divide and $subtract operations</p>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Leave Type</th>
+                                        <th>Status</th>
+                                        <th>Total Requests</th>
+                                        <th>Avg Duration (Days)</th>
+                                        <th>Total Days Covered</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaveStatisticsTable">
+                                    <tr><td colspan="5" class="empty-state">Loading aggregation data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance by Hostel Tab -->
+                <div id="attendance-hostel-tab" class="analytics-tab-content hidden">
+                    <div class="card">
+                        <h3>Attendance Summary by Hostel</h3>
+                        <p class="section-description">Hostel-wise statistics using $lookup (JOIN) and $cond (conditional counting)</p>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hostel Block</th>
+                                        <th>Total Students</th>
+                                        <th>Avg Attendance %</th>
+                                        <th>Avg Risk Score</th>
+                                        <th>Risk Breakdown</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendanceHostelTable">
+                                    <tr><td colspan="5" class="empty-state">Loading aggregation data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Students Tab -->
+                <div id="top-students-tab" class="analytics-tab-content hidden">
+                    <div class="card">
+                        <h3>Top Reliable Students Leaderboard</h3>
+                        <p class="section-description">Most reliable students using $lookup, $sort, and $limit aggregation stages</p>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Student Name</th>
+                                        <th>Hostel</th>
+                                        <th>Return Reliability %</th>
+                                        <th>Attendance %</th>
+                                        <th>Leaves Approved</th>
+                                        <th>Late Returns</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topStudentsTable">
+                                    <tr><td colspan="7" class="empty-state">Loading aggregation data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Refresh Button -->
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="refreshAnalyticsData()" style="width: auto; padding: 12px 30px;">
+                        🔄 Refresh All Analytics
+                    </button>
                 </div>
             </section>
         </main>
@@ -1040,6 +1159,169 @@
 
             api.downloadCSV(`/reports/${type}`, filters);
         }
+
+        // ===== MongoDB Analytics Functions =====
+
+        // Switch analytics tabs
+        function switchAnalyticsTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.analytics-tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tabs .tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`)?.classList.remove('hidden');
+
+            // Activate selected tab button
+            event.target.classList.add('active');
+
+            // Load data for the selected tab
+            if (tabName === 'risk-distribution') loadRiskDistribution();
+            if (tabName === 'leave-statistics') loadLeaveStatistics();
+            if (tabName === 'attendance-hostel') loadAttendanceByHostel();
+            if (tabName === 'top-students') loadTopStudents();
+        }
+
+        // Load Risk Distribution Aggregation
+        async function loadRiskDistribution() {
+            try {
+                const res = await api.getRiskDistributionAggregation();
+                const tbody = document.getElementById('riskDistributionTable');
+
+                if (!res.success || !res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No data available</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = res.data.map(item => `
+                    <tr>
+                        <td><strong>${item._id || 'N/A'}</strong></td>
+                        <td>${item.count}</td>
+                        <td>${item.avgRiskScore?.toFixed(2)}</td>
+                        <td>${item.minRiskScore?.toFixed(2)} - ${item.maxRiskScore?.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading risk distribution:', error);
+                document.getElementById('riskDistributionTable').innerHTML = 
+                    '<tr><td colspan="4" class="empty-state">Error loading data</td></tr>';
+            }
+        }
+
+        // Load Leave Statistics Aggregation
+        async function loadLeaveStatistics() {
+            try {
+                const res = await api.getLeaveStatisticsAggregation();
+                const tbody = document.getElementById('leaveStatisticsTable');
+
+                if (!res.success || !res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No data available</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = res.data.map(item => `
+                    <tr>
+                        <td>${item.leaveType || 'N/A'}</td>
+                        <td><span class="badge badge-${(item.status || '').toLowerCase().replace('_', '')}">${item.status || 'UNKNOWN'}</span></td>
+                        <td>${item.totalRequests}</td>
+                        <td>${item.avgDurationDays?.toFixed(2)}</td>
+                        <td>${item.totalDays}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading leave statistics:', error);
+                document.getElementById('leaveStatisticsTable').innerHTML = 
+                    '<tr><td colspan="5" class="empty-state">Error loading data</td></tr>';
+            }
+        }
+
+        // Load Attendance by Hostel Aggregation
+        async function loadAttendanceByHostel() {
+            try {
+                const res = await api.getAttendanceByHostelAggregation();
+                const tbody = document.getElementById('attendanceHostelTable');
+
+                if (!res.success || !res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No data available</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = res.data.map(item => {
+                    const riskBreakdown = `<small>H:${item.highRiskCount || 0} M:${item.mediumRiskCount || 0} L:${item.lowRiskCount || 0}</small>`;
+                    return `
+                        <tr>
+                            <td><strong>${item.hostelBlock || 'N/A'}</strong></td>
+                            <td>${item.totalStudents}</td>
+                            <td>${item.avgAttendancePercentage?.toFixed(1)}%</td>
+                            <td>${item.avgRiskScore?.toFixed(2)}</td>
+                            <td>${riskBreakdown}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading attendance by hostel:', error);
+                document.getElementById('attendanceHostelTable').innerHTML = 
+                    '<tr><td colspan="5" class="empty-state">Error loading data</td></tr>';
+            }
+        }
+
+        // Load Top Reliable Students Aggregation
+        async function loadTopStudents() {
+            try {
+                const res = await api.getTopReliableStudentsAggregation(10);
+                const tbody = document.getElementById('topStudentsTable');
+
+                if (!res.success || !res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No data available</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = res.data.map((item, index) => `
+                    <tr>
+                        <td><strong>#${index + 1}</strong></td>
+                        <td>${item.studentName || 'N/A'}</td>
+                        <td>${item.hostelBlock || '-'}</td>
+                        <td><strong>${item.returnReliabilityScore?.toFixed(1)}%</strong></td>
+                        <td>${item.attendancePercentage?.toFixed(1)}%</td>
+                        <td>${item.approvedLeavesCount}</td>
+                        <td>${item.lateReturnsCount}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading top students:', error);
+                document.getElementById('topStudentsTable').innerHTML = 
+                    '<tr><td colspan="7" class="empty-state">Error loading data</td></tr>';
+            }
+        }
+
+        // Refresh all analytics data
+        async function refreshAnalyticsData() {
+            utils.showToast('Refreshing analytics data...', 'info');
+            await loadRiskDistribution();
+            await loadLeaveStatistics();
+            await loadAttendanceByHostel();
+            await loadTopStudents();
+            utils.showToast('Analytics data refreshed!', 'success');
+        }
+
+        // Auto-load analytics when section is shown
+        function initAnalyticsSectionHandler() {
+            const origShowSection = window.showSection;
+            window.showSection = function(section) {
+                origShowSection(section);
+                if (section === 'mongodb-analytics') {
+                    loadRiskDistribution();
+                }
+            };
+        }
+
+        // Initialize when document loads
+        document.addEventListener('DOMContentLoaded', initAnalyticsSectionHandler);
     </script>
 </body>
 </html>
