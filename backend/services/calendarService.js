@@ -402,6 +402,114 @@ class CalendarService {
         }
         return days;
     }
+
+    // ===== ARRAY OPERATIONS (MongoDB $push & $addToSet) =====
+
+    /**
+     * Push item(s) to an array field (allows duplicates)
+     * @param {ObjectId} eventId - Calendar event ID
+     * @param {String} arrayField - Field name ('affectsHostels', 'affectsCourses', 'affectsYears')
+     * @param {Any|Array} items - Item or array of items to push
+     * @returns {Object} Updated event
+     * 
+     * Usage:
+     * await pushToArray(eventId, 'affectsHostels', 'Block D')
+     * await pushToArray(eventId, 'affectsCourses', ['IT', 'CSE'])
+     */
+    static async pushToArray(eventId, arrayField, items) {
+        const pushObj = {};
+        pushObj[arrayField] = Array.isArray(items) ? { $each: items } : items;
+
+        return await AcademicCalendar.findByIdAndUpdate(
+            eventId,
+            { $push: pushObj },
+            { new: true, runValidators: true }
+        );
+    }
+
+    /**
+     * Add item(s) to array field without duplicates
+     * @param {ObjectId} eventId - Calendar event ID
+     * @param {String} arrayField - Field name ('affectsHostels', 'affectsCourses', 'affectsYears')
+     * @param {Any|Array} items - Item or array of items to add
+     * @returns {Object} Updated event
+     * 
+     * Usage:
+     * await addToSetArray(eventId, 'affectsHostels', 'Block E')
+     * await addToSetArray(eventId, 'affectsCourses', ['BIO', 'CHEM'])
+     */
+    static async addToSetArray(eventId, arrayField, items) {
+        const addToSetObj = {};
+        addToSetObj[arrayField] = Array.isArray(items) ? { $each: items } : items;
+
+        return await AcademicCalendar.findByIdAndUpdate(
+            eventId,
+            { $addToSet: addToSetObj },
+            { new: true, runValidators: true }
+        );
+    }
+
+    /**
+     * Remove item(s) from array field
+     * @param {ObjectId} eventId - Calendar event ID
+     * @param {String} arrayField - Field name
+     * @param {Any} item - Item to remove
+     * @returns {Object} Updated event
+     * 
+     * Usage:
+     * await removeFromArray(eventId, 'affectsHostels', 'Block A')
+     */
+    static async removeFromArray(eventId, arrayField, item) {
+        const pullObj = {};
+        pullObj[arrayField] = item;
+
+        return await AcademicCalendar.findByIdAndUpdate(
+            eventId,
+            { $pull: pullObj },
+            { new: true, runValidators: true }
+        );
+    }
+
+    /**
+     * Remove duplicates from array field using $setUnion
+     * @param {ObjectId} eventId - Calendar event ID
+     * @param {String} arrayField - Field name
+     * @returns {Object} Updated event
+     * 
+     * Usage:
+     * await removeDuplicates(eventId, 'affectsHostels')
+     */
+    static async removeDuplicates(eventId, arrayField) {
+        const setObj = {};
+        setObj[arrayField] = { $setUnion: [`$${arrayField}`, []] };
+
+        return await AcademicCalendar.findByIdAndUpdate(
+            eventId,
+            [{ $set: setObj }],
+            { new: true }
+        );
+    }
+
+    /**
+     * Replace entire array with new values (removes duplicates)
+     * @param {ObjectId} eventId - Calendar event ID
+     * @param {String} arrayField - Field name
+     * @param {Array} items - New array items
+     * @returns {Object} Updated event
+     * 
+     * Usage:
+     * await setArray(eventId, 'affectsHostels', ['Block A', 'Block C'])
+     */
+    static async setArray(eventId, arrayField, items) {
+        const setObj = {};
+        setObj[arrayField] = Array.isArray(items) ? [...new Set(items)] : [];
+
+        return await AcademicCalendar.findByIdAndUpdate(
+            eventId,
+            { $set: setObj },
+            { new: true, runValidators: true }
+        );
+    }
 }
 
 module.exports = CalendarService;

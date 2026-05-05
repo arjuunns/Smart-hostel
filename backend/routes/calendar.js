@@ -213,6 +213,22 @@ router.get('/all', auth, async (req, res) => {
 /**
  * POST /api/calendar/event
  * Create a new calendar event
+ * 
+ * Request body:
+ * - title, eventType, startDate, endDate, academicYear (required)
+ * - affectsHostels, affectsCourses, affectsYears (arrays - can use $push/$addToSet later)
+ * 
+ * Example:
+ * {
+ *   "title": "Mid Semester Exam",
+ *   "eventType": "EXAM",
+ *   "startDate": "2026-06-01",
+ *   "endDate": "2026-06-15",
+ *   "academicYear": "2025-2026",
+ *   "affectsHostels": ["Block A", "Block B"],
+ *   "affectsCourses": ["CSE", "ECE"],
+ *   "affectsYears": [1, 2, 3]
+ * }
  */
 router.post('/event', auth, async (req, res) => {
     try {
@@ -252,9 +268,9 @@ router.post('/event', auth, async (req, res) => {
             endDate: new Date(endDate),
             leavePolicy: leavePolicy || 'NORMAL',
             riskModifier: riskModifier || 0,
-            affectsHostels: affectsHostels || [],
-            affectsCourses: affectsCourses || [],
-            affectsYears: affectsYears || [],
+            affectsHostels: affectsHostels && Array.isArray(affectsHostels) ? [...new Set(affectsHostels)] : [],
+            affectsCourses: affectsCourses && Array.isArray(affectsCourses) ? [...new Set(affectsCourses)] : [],
+            affectsYears: affectsYears && Array.isArray(affectsYears) ? [...new Set(affectsYears)] : [],
             priority: priority || 1,
             academicYear,
             semester: semester || 'BOTH'
@@ -273,6 +289,11 @@ router.post('/event', auth, async (req, res) => {
 /**
  * PUT /api/calendar/event/:id
  * Update a calendar event
+ * 
+ * Supports:
+ * - Regular field updates: { title: "new title", leavePolicy: "NORMAL" }
+ * - Array PUSH (add duplicates allowed): { $push: { affectsHostels: "Block D" } }
+ * - Array ADDTOSET (no duplicates): { $addToSet: { affectsCourses: { $each: ["IT", "CSE"] } } }
  */
 router.put('/event/:id', auth, async (req, res) => {
     try {
@@ -280,9 +301,24 @@ router.put('/event/:id', auth, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
+        const { $push, $addToSet, ...regularUpdates } = req.body;
+        
+        // Build the update object
+        const updateObj = { ...regularUpdates, updatedAt: new Date() };
+        
+        // If array operations provided, add them to update
+        if ($push || $addToSet) {
+            if ($push) {
+                Object.assign(updateObj, { $push });
+            }
+            if ($addToSet) {
+                Object.assign(updateObj, { $addToSet });
+            }
+        }
+
         const event = await AcademicCalendar.findByIdAndUpdate(
             req.params.id,
-            { ...req.body, updatedAt: new Date() },
+            updateObj,
             { new: true, runValidators: true }
         );
 
