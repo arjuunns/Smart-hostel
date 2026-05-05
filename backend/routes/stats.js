@@ -293,7 +293,16 @@ router.get('/aggregation/leave-statistics', auth, async (req, res) => {
             });
         }
 
-        const statistics = await StatsService.getLeaveStatisticsAggregated();
+        let statistics = await StatsService.getLeaveStatisticsAggregated();
+        
+        // Ensure all values are properly defined (not undefined)
+        statistics = statistics.map(stat => ({
+            leaveType: stat.leaveType || 'UNKNOWN',
+            status: stat.status || 'PENDING',
+            totalRequests: stat.totalRequests || 0,
+            averageDurationDays: stat.averageDurationDays || 0,
+            totalDaysCovered: stat.totalDaysCovered || 0
+        }));
         
         res.json({ 
             success: true, 
@@ -301,6 +310,7 @@ router.get('/aggregation/leave-statistics', auth, async (req, res) => {
             data: statistics 
         });
     } catch (error) {
+        console.error('Error in leave statistics:', error);
         res.status(500).json({ 
             success: false, 
             message: error.message 

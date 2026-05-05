@@ -68,21 +68,25 @@ function generateStudentStats(studentId, studentName, hostelBlock, roomNo) {
     const avgLeaveFrequency = totalLeavesApproved > 0 ? 
         randomFloat(totalDays / totalLeavesApproved * 0.9, totalDays / totalLeavesApproved * 1.1) : 0;
     const leaveTypes = ['REGULAR', 'EMERGENCY', 'MEDICAL'];
-    const frequentLeaveType = leaveTypes[Math.floor(Math.random() * leaveTypes.length)];
+    const frequentLeaveType = totalLeavesApproved > 0 
+        ? leaveTypes[Math.floor(Math.random() * leaveTypes.length)]
+        : 'REGULAR';
     const leavesThisMonth = random(0, 3);
     const leavesThisSemester = totalLeavesApproved;
 
-    // Generate last leave date (within last 3 months)
+    // Generate last leave date (within last 3 months, or today if no leaves)
     const lastLeaveDate = new Date();
-    lastLeaveDate.setDate(lastLeaveDate.getDate() - random(0, 90));
+    if (totalLeavesApproved > 0) {
+        lastLeaveDate.setDate(lastLeaveDate.getDate() - random(0, 90));
+    }
 
-    // Component scores (higher = more risky)
+    // Component scores (higher = more risky) - rounded
     const componentScores = {
-        attendance: Math.max(0, 100 - attendancePercentage),
-        reliability: Math.max(0, 100 - returnReliabilityScore),
-        violations: Math.min(100, (curfewViolations + unauthorizedAbsences) * 15),
-        frequency: Math.min(100, (totalLeavesApplied / 15) * 100),
-        history: Math.min(100, (totalLeavesRejected + totalLeavesFlagged) * 20)
+        attendance: Math.round(Math.max(0, 100 - attendancePercentage)),
+        reliability: Math.round(Math.max(0, 100 - returnReliabilityScore)),
+        violations: Math.round(Math.min(100, (curfewViolations + unauthorizedAbsences) * 15)),
+        frequency: Math.round(Math.min(100, (totalLeavesApplied / 15) * 100)),
+        history: Math.round(Math.min(100, (totalLeavesRejected + totalLeavesFlagged) * 20))
     };
 
     // Calculate overall risk score
@@ -90,33 +94,39 @@ function generateStudentStats(studentId, studentName, hostelBlock, roomNo) {
 
     return {
         studentId: ObjectId(studentId),
-        totalDays,
-        presentDays,
-        absentDays,
-        lateDays,
-        attendancePercentage,
-        totalLeavesApplied,
-        totalLeavesApproved,
-        totalLeavesRejected,
-        totalLeavesAutoApproved,
-        totalLeavesFlagged,
-        totalLeaveDaysTaken,
-        onTimeReturns,
-        lateReturns,
-        totalLateReturnHours,
-        returnReliabilityScore,
-        curfewViolations,
-        totalCurfewViolationMinutes,
-        unauthorizedAbsences,
-        avgLeaveDuration,
-        avgLeaveFrequency,
-        frequentLeaveType,
-        lastLeaveDate,
-        leavesThisMonth,
-        leavesThisSemester,
-        overallRiskScore,
+        totalDays: Math.max(100, totalDays),
+        presentDays: Math.max(60, presentDays),
+        absentDays: Math.max(0, absentDays),
+        lateDays: Math.max(0, lateDays),
+        attendancePercentage: Math.round(attendancePercentage * 100) / 100,
+        totalLeavesApplied: Math.max(0, totalLeavesApplied),
+        totalLeavesApproved: Math.max(0, totalLeavesApproved),
+        totalLeavesRejected: Math.max(0, totalLeavesRejected),
+        totalLeavesAutoApproved: Math.max(0, totalLeavesAutoApproved),
+        totalLeavesFlagged: Math.max(0, totalLeavesFlagged),
+        totalLeaveDaysTaken: Math.max(0, totalLeaveDaysTaken),
+        onTimeReturns: Math.max(0, onTimeReturns),
+        lateReturns: Math.max(0, lateReturns),
+        totalLateReturnHours: Math.max(0, totalLateReturnHours),
+        returnReliabilityScore: Math.round(returnReliabilityScore * 100) / 100,
+        curfewViolations: Math.max(0, curfewViolations),
+        totalCurfewViolationMinutes: Math.max(0, totalCurfewViolationMinutes),
+        unauthorizedAbsences: Math.max(0, unauthorizedAbsences),
+        avgLeaveDuration: Math.round(avgLeaveDuration * 100) / 100,
+        avgLeaveFrequency: Math.round(avgLeaveFrequency * 100) / 100,
+        frequentLeaveType: frequentLeaveType || 'REGULAR',
+        lastLeaveDate: new Date(lastLeaveDate),
+        leavesThisMonth: Math.max(0, leavesThisMonth),
+        leavesThisSemester: Math.max(0, leavesThisSemester),
+        overallRiskScore: Math.round(overallRiskScore),
         riskCategory: getRiskCategory(overallRiskScore),
-        componentScores,
+        componentScores: {
+            attendance: Math.max(0, Math.min(100, componentScores.attendance || 0)),
+            reliability: Math.max(0, Math.min(100, componentScores.reliability || 0)),
+            violations: Math.max(0, Math.min(100, componentScores.violations || 0)),
+            frequency: Math.max(0, Math.min(100, componentScores.frequency || 0)),
+            history: Math.max(0, Math.min(100, componentScores.history || 0))
+        },
         lastUpdated: new Date(),
         statsVersion: 1
     };

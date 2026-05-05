@@ -453,15 +453,17 @@ class StatsService {
                 // Stage 3: Sort by risk level (descending)
                 { $sort: { _id: -1 } },
                 
-                // Stage 4: Project final output
+                // Stage 4: Project final output with defaults for undefined fields
                 {
                     $project: {
                         _id: 0,
-                        riskCategory: '$_id',
-                        studentCount: '$count',
-                        averageRiskScore: { $round: ['$avgRiskScore', 2] },
-                        maxRiskScore: '$maxRiskScore',
-                        minRiskScore: '$minRiskScore'
+                        riskCategory: { $ifNull: ['$_id', 'UNCLASSIFIED'] },
+                        studentCount: { $ifNull: ['$count', 0] },
+                        averageRiskScore: { 
+                            $round: [{ $ifNull: ['$avgRiskScore', 0] }, 2] 
+                        },
+                        maxRiskScore: { $ifNull: ['$maxRiskScore', 0] },
+                        minRiskScore: { $ifNull: ['$minRiskScore', 0] }
                     }
                 }
             ]);
@@ -517,15 +519,19 @@ class StatsService {
                 // Stage 3: Sort by leave type and status
                 { $sort: { '_id.leaveType': 1, '_id.status': 1 } },
                 
-                // Stage 4: Project final output
+                // Stage 4: Project final output with defaults for undefined fields
                 {
                     $project: {
                         _id: 0,
-                        leaveType: '$_id.leaveType',
-                        status: '$_id.status',
-                        totalRequests: '$count',
-                        averageDurationDays: { $round: ['$avgDuration', 1] },
-                        totalDaysCovered: { $round: ['$totalDays', 1] }
+                        leaveType: { $ifNull: ['$_id.leaveType', 'UNKNOWN'] },
+                        status: { $ifNull: ['$_id.status', 'PENDING'] },
+                        totalRequests: { $ifNull: ['$count', 0] },
+                        averageDurationDays: { 
+                            $round: [{ $ifNull: ['$avgDuration', 0] }, 1] 
+                        },
+                        totalDaysCovered: { 
+                            $round: [{ $ifNull: ['$totalDays', 0] }, 1] 
+                        }
                     }
                 }
             ]);
@@ -590,17 +596,21 @@ class StatsService {
                 // Stage 5: Sort by hostel name
                 { $sort: { _id: 1 } },
                 
-                // Stage 6: Project final output
+                // Stage 6: Project final output with defaults for undefined fields
                 {
                     $project: {
                         _id: 0,
-                        hostelBlock: '$_id',
-                        totalStudents: 1,
-                        averageAttendancePercentage: { $round: ['$avgAttendance', 2] },
-                        averageRiskScore: { $round: ['$avgRiskScore', 2] },
-                        highRiskStudents: 1,
-                        mediumRiskStudents: 1,
-                        lowRiskStudents: 1
+                        hostelBlock: { $ifNull: ['$_id', 'UNKNOWN'] },
+                        totalStudents: { $ifNull: ['$totalStudents', 0] },
+                        averageAttendancePercentage: { 
+                            $round: [{ $ifNull: ['$avgAttendance', 100] }, 2] 
+                        },
+                        averageRiskScore: { 
+                            $round: [{ $ifNull: ['$avgRiskScore', 0] }, 2] 
+                        },
+                        highRiskStudents: { $ifNull: ['$highRiskStudents', 0] },
+                        mediumRiskStudents: { $ifNull: ['$mediumRiskStudents', 0] },
+                        lowRiskStudents: { $ifNull: ['$lowRiskStudents', 0] }
                     }
                 }
             ]);
