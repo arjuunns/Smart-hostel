@@ -424,6 +424,248 @@ class StatsService {
                 : 'REJECT'
         };
     }
+
+    // ===== MONGODB AGGREGATION PIPELINES =====
+
+    /**
+     * Get risk distribution across all students using MongoDB aggregation
+     * Groups students by risk category and counts them
+     * Demonstrates: $group, $sort, $project
+     * @returns {Array} Risk distribution with student counts per category
+     */
+    static async getRiskDistributionAggregated() {
+        try {
+            const distribution = await StudentStats.aggregate([
+                // Stage 1: Match only students with calculated risk scores
+                { $match: { riskCategory: { $exists: true } } },
+                
+                // Stage 2: Group by risk category and count
+                {
+                    $group: {
+                        _id: '$riskCategory',
+                        count: { $sum: 1 },
+                        avgRiskScore: { $avg: '$overallRiskScore' },
+                        maxRiskScore: { $max: '$overallRiskScore' },
+                        minRiskScore: { $min: '$overallRiskScore' }
+                    }
+                },
+                
+                // Stage 3: Sort by risk level (descending)
+                { $sort: { _id: -1 } },
+                
+                // Stage 4: Project final output
+                {
+                    $project: {
+                        _id: 0,
+                        riskCategory: '$_id',
+                        studentCount: '$count',
+                        averageRiskScore: { $round: ['$avgRiskScore', 2] },
+                        maxRiskScore: '$maxRiskScore',
+                        minRiskScore: '$minRiskScore'
+                    }
+                }
+            ]);
+
+            return distribution;
+        } catch (error) {
+            console.error('Error in getRiskDistributionAggregated:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get comprehensive leave statistics using MongoDB aggregation
+     * Groups leave data by type and status to show summary
+     * Demonstrates: $match, $group, $sort, $project
+     * @returns {Array} Leave statistics grouped by type and status
+     */
+    static async getLeaveStatisticsAggregated() {
+        try {
+            const Leave = require('../models/Leave');
+            
+            const statistics = await Leave.aggregate([
+                // Stage 1: Match all leaves
+                { $match: {} },
+                
+                // Stage 2: Group by type and status
+                {
+                    $group: {
+                        _id: {
+                            leaveType: '$leaveType',
+                            status: '$status'
+                        },
+                        count: { $sum: 1 },
+                        avgDuration: {
+                            $avg: {
+                                $divide: [
+                                    { $subtract: ['$toDateTime', '$fromDateTime'] },
+                                    86400000 // milliseconds in a day
+                                ]
+                            }
+                        },
+                        totalDays: {
+                            $sum: {
+                                $divide: [
+                                    { $subtract: ['$toDateTime', '$fromDateTime'] },
+                                    86400000
+                                ]
+                            }
+                        }
+                    }
+                },
+                
+                // Stage 3: Sort by leave type and status
+                { $sort: { '_id.leaveType': 1, '_id.status': 1 } },
+                
+                // Stage 4: Project final output
+                {
+                    $project: {
+                        _id: 0,
+                        leaveType: '$_id.leaveType',
+                        status: '$_id.status',
+                        totalRequests: '$count',
+                        averageDurationDays: { $round: ['$avgDuration', 1] },
+                        totalDaysCovered: { $round: ['$totalDays', 1] }
+                    }
+                }
+            ]);
+
+            return statistics;
+        } catch (error) {
+            console.error('Error in getLeaveStatisticsAggregated:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get attendance summary by hostel using MongoDB aggregation with $lookup
+     * Joins StudentStats with User collection to group by hostel
+     * Demonstrates: $lookup, $group, $sort, $project
+     * @returns {Array} Attendance metrics per hostel
+     */
+    static async getAttendanceSummaryByHostelAggregated() {
+        try {
+            const summary = await StudentStats.aggregate([
+                // Stage 1: Lookup user details to get hostel information
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'studentId',
+                        foreignField: '_id',
+                        as: 'studentDetails'
+                    }
+                },
+                
+                // Stage 2: Unwind the joined array
+                { $unwind: { path: '$studentDetails', preserveNullAndEmptyArrays: true } },
+                
+                // Stage 3: Match only students with hostel information
+                { $match: { 'studentDetails.hostelBlock': { $exists: true, $ne: null } } },
+                
+                // Stage 4: Group by hostel block
+                {
+                    $group: {
+                        _id: '$studentDetails.hostelBlock',
+                        totalStudents: { $sum: 1 },
+                        avgAttendance: { $avg: '$attendancePercentage' },
+                        avgRiskScore: { $avg: '$overallRiskScore' },
+                        highRiskStudents: {
+                            $sum: {
+                                $cond: [{ $gt: ['$overallRiskScore', 60] }, 1, 0]
+                            }
+                        },
+                        mediumRiskStudents: {
+                            $sum: {
+                                $cond: [{ $and: [{ $gte: ['$overallRiskScore', 30] }, { $lte: ['$overallRiskScore', 60] }] }, 1, 0]
+                            }
+                        },
+                        lowRiskStudents: {
+                            $sum: {
+                                $cond: [{ $lt: ['$overallRiskScore', 30] }, 1, 0]
+                            }
+                        }
+                    }
+                },
+                
+                // Stage 5: Sort by hostel name
+                { $sort: { _id: 1 } },
+                
+                // Stage 6: Project final output
+                {
+                    $project: {
+                        _id: 0,
+                        hostelBlock: '$_id',
+                        totalStudents: 1,
+                        averageAttendancePercentage: { $round: ['$avgAttendance', 2] },
+                        averageRiskScore: { $round: ['$avgRiskScore', 2] },
+                        highRiskStudents: 1,
+                        mediumRiskStudents: 1,
+                        lowRiskStudents: 1
+                    }
+                }
+            ]);
+
+            return summary;
+        } catch (error) {
+            console.error('Error in getAttendanceSummaryByHostelAggregated:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get top reliable students (leaderboard) using aggregation
+     * Demonstrates: $sort, $limit, $lookup, $project
+     * @param {Number} limit - Number of top students to return
+     * @returns {Array} Top students sorted by return reliability
+     */
+    static async getTopReliableStudentsAggregated(limit = 10) {
+        try {
+            const topStudents = await StudentStats.aggregate([
+                // Stage 1: Lookup student details
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'studentId',
+                        foreignField: '_id',
+                        as: 'student'
+                    }
+                },
+                
+                // Stage 2: Unwind
+                { $unwind: '$student' },
+                
+                // Stage 3: Filter students with approved leaves
+                { $match: { totalLeavesApproved: { $gt: 0 } } },
+                
+                // Stage 4: Sort by return reliability (descending)
+                { $sort: { returnReliabilityScore: -1, attendancePercentage: -1 } },
+                
+                // Stage 5: Limit results
+                { $limit: limit },
+                
+                // Stage 6: Project clean output
+                {
+                    $project: {
+                        _id: 0,
+                        rank: { $meta: 'documentInternalId' },
+                        studentName: '$student.name',
+                        studentId: '$studentId',
+                        hostelBlock: '$student.hostelBlock',
+                        returnReliabilityScore: 1,
+                        attendancePercentage: 1,
+                        totalLeavesApproved: 1,
+                        lateReturns: 1,
+                        totalLateReturnHours: 1
+                    }
+                }
+            ]);
+
+            return topStudents;
+        } catch (error) {
+            console.error('Error in getTopReliableStudentsAggregated:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = StatsService;

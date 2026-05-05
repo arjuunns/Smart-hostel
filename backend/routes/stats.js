@@ -246,6 +246,129 @@ router.get('/leaderboard', auth, async (req, res) => {
     }
 });
 
+// ===== MONGODB AGGREGATION ROUTES =====
+
+/**
+ * GET /api/stats/aggregation/risk-distribution
+ * Get risk distribution using MongoDB aggregation pipeline
+ * Demonstrates: $group, $sort, $project
+ * Warden/Admin only
+ */
+router.get('/aggregation/risk-distribution', auth, async (req, res) => {
+    try {
+        if (!['warden', 'admin'].includes(req.user.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Not authorized' 
+            });
+        }
+
+        const distribution = await StatsService.getRiskDistributionAggregated();
+        
+        res.json({ 
+            success: true, 
+            message: 'Risk distribution aggregated using MongoDB aggregation pipeline',
+            data: distribution 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * GET /api/stats/aggregation/leave-statistics
+ * Get leave statistics grouped by type and status
+ * Demonstrates: $group, $sort, $project with computed fields
+ * Warden/Admin only
+ */
+router.get('/aggregation/leave-statistics', auth, async (req, res) => {
+    try {
+        if (!['warden', 'admin'].includes(req.user.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Not authorized' 
+            });
+        }
+
+        const statistics = await StatsService.getLeaveStatisticsAggregated();
+        
+        res.json({ 
+            success: true, 
+            message: 'Leave statistics aggregated using MongoDB grouping and computed fields',
+            data: statistics 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * GET /api/stats/aggregation/attendance-by-hostel
+ * Get attendance summary by hostel using $lookup and $group
+ * Demonstrates: $lookup (join), $group, $project with conditional fields
+ * Warden/Admin only
+ */
+router.get('/aggregation/attendance-by-hostel', auth, async (req, res) => {
+    try {
+        if (!['warden', 'admin'].includes(req.user.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Not authorized' 
+            });
+        }
+
+        const summary = await StatsService.getAttendanceSummaryByHostelAggregated();
+        
+        res.json({ 
+            success: true, 
+            message: 'Attendance summary aggregated using $lookup (join) and $group operations',
+            data: summary 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * GET /api/stats/aggregation/top-reliable-students
+ * Get top reliable students using aggregation pipeline
+ * Demonstrates: $lookup, $sort, $limit, $project
+ * Warden/Admin only
+ */
+router.get('/aggregation/top-reliable-students', auth, async (req, res) => {
+    try {
+        if (!['warden', 'admin'].includes(req.user.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Not authorized' 
+            });
+        }
+
+        const limit = parseInt(req.query.limit) || 10;
+        const topStudents = await StatsService.getTopReliableStudentsAggregated(limit);
+        
+        res.json({ 
+            success: true, 
+            message: `Top ${limit} reliable students retrieved using aggregation pipeline with $lookup and $sort`,
+            data: topStudents 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
 // ===== HELPER FUNCTIONS =====
 
 /**

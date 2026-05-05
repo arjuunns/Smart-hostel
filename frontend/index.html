@@ -48,7 +48,19 @@
                     </div>
                     <div class="form-group">
                         <label for="regPassword">Password</label>
-                        <input type="password" id="regPassword" required placeholder="Enter your password" minlength="6">
+                        <input type="password" id="regPassword" required placeholder="Enter your password" minlength="8" oninput="checkPasswordStrength()">
+                        <div class="password-strength" id="passwordStrength">
+                            <div class="strength-bar">
+                                <div class="strength-fill" id="strengthFill"></div>
+                            </div>
+                            <div class="strength-requirements">
+                                <div class="requirement" id="req-length"><span class="req-icon"></span> At least 8 characters</div>
+                                <div class="requirement" id="req-upper"><span class="req-icon"></span> One uppercase letter</div>
+                                <div class="requirement" id="req-lower"><span class="req-icon"></span> One lowercase letter</div>
+                                <div class="requirement" id="req-number"><span class="req-icon"></span> One number</div>
+                                <div class="requirement" id="req-special"><span class="req-icon"></span> One special character</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="regRole">Role</label>
@@ -173,6 +185,93 @@
             document.getElementById('message').textContent = '';
             document.getElementById('message').className = 'message';
         }
+
+        function checkPasswordStrength() {
+            const password = document.getElementById('regPassword').value;
+            const strengthFill = document.getElementById('strengthFill');
+            
+            // Check each requirement
+            const checks = {
+                length: password.length >= 8,
+                upper: /[A-Z]/.test(password),
+                lower: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+            
+            // Update requirement indicators
+            updateRequirement('req-length', checks.length);
+            updateRequirement('req-upper', checks.upper);
+            updateRequirement('req-lower', checks.lower);
+            updateRequirement('req-number', checks.number);
+            updateRequirement('req-special', checks.special);
+            
+            // Calculate strength score
+            const score = Object.values(checks).filter(Boolean).length;
+            const percentage = (score / 5) * 100;
+            
+            // Update strength bar
+            strengthFill.style.width = percentage + '%';
+            
+            // Set color based on strength
+            if (score <= 2) {
+                strengthFill.className = 'strength-fill weak';
+            } else if (score <= 3) {
+                strengthFill.className = 'strength-fill fair';
+            } else if (score <= 4) {
+                strengthFill.className = 'strength-fill good';
+            } else {
+                strengthFill.className = 'strength-fill strong';
+            }
+            
+            return score >= 4; // Return true if password is strong enough
+        }
+        
+        function updateRequirement(id, met) {
+            const el = document.getElementById(id);
+            if (met) {
+                el.classList.add('met');
+                el.classList.remove('unmet');
+            } else {
+                el.classList.remove('met');
+                el.classList.add('unmet');
+            }
+        }
+        
+        // Override handleRegister to include password validation
+        const originalHandleRegister = handleRegister;
+        handleRegister = async function(e) {
+            e.preventDefault();
+            
+            // Check password strength before submitting
+            if (!checkPasswordStrength()) {
+                showMessage('Password must have at least 8 characters, one uppercase, one lowercase, one number, and one special character', 'error');
+                return;
+            }
+            
+            const userData = {
+                name: document.getElementById('regName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                role: document.getElementById('regRole').value,
+                hostelBlock: document.getElementById('regHostel').value,
+                roomNo: document.getElementById('regRoom').value,
+                phone: document.getElementById('regPhone').value,
+                parentPhone: document.getElementById('regParentPhone').value
+            };
+
+            try {
+                const response = await api.register(userData);
+                if (response.success) {
+                    showMessage('Registration successful! Redirecting...', 'success');
+                    setTimeout(() => redirectToDashboard(response.data.user.role), 1000);
+                } else {
+                    showMessage(response.message || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                showMessage(error.message || 'Registration failed', 'error');
+            }
+        };
     </script>
 </body>
 </html>

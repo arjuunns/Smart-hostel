@@ -199,6 +199,97 @@ body {
     min-height: 100px;
 }
 
+/* Password Strength Indicator */
+.password-strength {
+    margin-top: 12px;
+}
+
+.strength-bar {
+    height: 6px;
+    background-color: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 3px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strength-fill.weak {
+    background-color: var(--danger-color);
+}
+
+.strength-fill.fair {
+    background-color: var(--warning-color);
+}
+
+.strength-fill.good {
+    background-color: #22c55e;
+}
+
+.strength-fill.strong {
+    background-color: var(--success-color);
+}
+
+.strength-requirements {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.requirement {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s ease;
+}
+
+.requirement .req-icon {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    display: inline-block;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.requirement.met {
+    color: var(--success-color);
+}
+
+.requirement.met .req-icon {
+    border-color: var(--success-color);
+    background-color: var(--success-color);
+}
+
+.requirement.met .req-icon::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 4px;
+    height: 7px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.requirement.unmet {
+    color: var(--text-muted);
+}
+
+.requirement.unmet .req-icon {
+    border-color: var(--border-color);
+    background-color: transparent;
+}
+
 /* Buttons */
 .btn {
     display: inline-block;

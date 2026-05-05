@@ -11,12 +11,45 @@ const generateToken = (id) => {
     });
 };
 
+// Password validation helper
+const validatePassword = (password) => {
+    const errors = [];
+    
+    if (!password || password.length < 8) {
+        errors.push('Password must be at least 8 characters long');
+    }
+    if (!/[A-Z]/.test(password)) {
+        errors.push('Password must contain at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+        errors.push('Password must contain at least one lowercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+        errors.push('Password must contain at least one number');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        errors.push('Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)');
+    }
+    
+    return errors;
+};
+
 // @route   POST /api/auth/register
 // @desc    Register new user
 // @access  Public
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password, role, hostelBlock, roomNo, phone, parentPhone } = req.body;
+
+        // Validate password strength
+        const passwordErrors = validatePassword(password);
+        if (passwordErrors.length > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: passwordErrors[0],
+                errors: passwordErrors
+            });
+        }
 
         // Check if user exists
         const userExists = await User.findOne({ email });
