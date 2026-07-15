@@ -291,7 +291,16 @@ const WardenDashboard = () => {
         e.preventDefault();
         setCalMsg({ text: '', type: '' });
 
-        const eventData = { title: calTitle, eventType: calType, startDate: calStart, endDate: calEnd, leavePolicy: calPolicy, description: calDesc };
+        const eventData = { 
+            title: calTitle, 
+            eventType: calType, 
+            startDate: calStart, 
+            endDate: calEnd, 
+            leavePolicy: calPolicy, 
+            description: calDesc,
+            academicYear: new Date().getFullYear().toString() + "-" + (new Date().getFullYear() + 1).toString(),
+            priority: 1
+        };
 
         try {
             const res = await api.createCalendarEvent(eventData);
