@@ -8,9 +8,11 @@
 }
 
 :root {
+    /* Thapar University Brand Colors */
     --primary-color: #7B1818;
     --primary-hover: #641414;
     --primary-light: #fdf0f0;
+
     --success-color: #0f9f6e;
     --success-light: #e6f6ee;
     --danger-color: #f05252;
@@ -32,56 +34,56 @@
 
 /* Dark Mode */
 [data-theme="dark"] {
-    --primary-color: #818cf8;
-    --primary-hover: #6366f1;
-    --primary-light: #232244;
+    --primary-color: #e8b86d;
+    --primary-hover: #d4a459;
+    --primary-light: #2e1c08;
     --success-color: #34d399;
     --success-light: #132b1f;
     --danger-color: #f87171;
     --danger-light: #371616;
     --warning-color: #fbbf24;
     --warning-light: #2e1d0f;
-    --bg-color: #0b0f17;
-    --card-bg: rgba(21, 24, 33, 0.85);
-    --text-color: #f3f4f6;
-    --text-muted: #9ca3af;
-    --border-color: #1f2937;
-    --sidebar-bg: rgba(16, 18, 26, 0.95);
-    --hover-bg: #1f2937;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-    --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+    --bg-color: #120808;
+    --card-bg: rgba(28, 12, 12, 0.88);
+    --text-color: #f5eaea;
+    --text-muted: #b89090;
+    --border-color: #2e1515;
+    --sidebar-bg: rgba(20, 8, 8, 0.97);
+    --hover-bg: #2a1010;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+    --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.25);
 }
 
 /* System preference detection */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-        --primary-color: #818cf8;
-        --primary-hover: #6366f1;
-        --primary-light: #232244;
+        --primary-color: #e8b86d;
+        --primary-hover: #d4a459;
+        --primary-light: #2e1c08;
         --success-color: #34d399;
         --success-light: #132b1f;
         --danger-color: #f87171;
         --danger-light: #371616;
         --warning-color: #fbbf24;
         --warning-light: #2e1d0f;
-        --bg-color: #0b0f17;
-        --card-bg: rgba(21, 24, 33, 0.85);
-        --text-color: #f3f4f6;
-        --text-muted: #9ca3af;
-        --border-color: #1f2937;
-        --sidebar-bg: rgba(16, 18, 26, 0.95);
-        --hover-bg: #1f2937;
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-        --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
-        --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+        --bg-color: #120808;
+        --card-bg: rgba(28, 12, 12, 0.88);
+        --text-color: #f5eaea;
+        --text-muted: #b89090;
+        --border-color: #2e1515;
+        --sidebar-bg: rgba(20, 8, 8, 0.97);
+        --hover-bg: #2a1010;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+        --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
+        --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.25);
     }
 }
 
 body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--bg-color);
-    background-image: 
+    background-image:
         radial-gradient(at 0% 0%, rgba(123, 24, 24, 0.04) 0px, transparent 50%),
         radial-gradient(at 100% 100%, rgba(201, 168, 76, 0.02) 0px, transparent 50%);
     color: var(--text-color);
@@ -557,7 +559,8 @@ table {
     border-collapse: collapse;
 }
 
-th, td {
+th,
+td {
     padding: 14px 18px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
@@ -645,8 +648,15 @@ tr:hover {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
 }
 
 /* QR Code Display */
@@ -888,8 +898,13 @@ tr:hover {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Tab Navigation */
@@ -959,7 +974,8 @@ tr:hover {
 }
 
 /* Status Badges - Extended */
-.badge-auto_approved, .badge-auto-approved {
+.badge-auto_approved,
+.badge-auto-approved {
     background-color: #059669;
     color: white;
 }
@@ -1161,7 +1177,9 @@ tr:hover {
     text-align: right;
 }
 
-.prediction-warnings, .prediction-tips, .prediction-positives {
+.prediction-warnings,
+.prediction-tips,
+.prediction-positives {
     padding: 12px;
     border-radius: 8px;
     font-size: 0.9rem;
@@ -1182,7 +1200,9 @@ tr:hover {
     border-left: 3px solid var(--success-color);
 }
 
-.prediction-warnings ul, .prediction-tips ul, .prediction-positives ul {
+.prediction-warnings ul,
+.prediction-tips ul,
+.prediction-positives ul {
     list-style: disc;
     padding-left: 20px;
     margin-top: 8px;
@@ -1459,6 +1479,7 @@ tr:hover {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1553,6 +1574,7 @@ tr:hover {
     --primary-hover: #2d5d42;
     --primary-light: #eaf4ed;
 }
+
 [data-theme="dark"][data-accent="sage"] {
     --primary-color: #5bb381;
     --primary-hover: #48a070;
@@ -1565,6 +1587,7 @@ tr:hover {
     --primary-hover: #115e59;
     --primary-light: #e6f4f2;
 }
+
 [data-theme="dark"][data-accent="teal"] {
     --primary-color: #2ed2c5;
     --primary-hover: #21b0a5;
@@ -1577,6 +1600,7 @@ tr:hover {
     --primary-hover: #8f463c;
     --primary-light: #f7edeb;
 }
+
 [data-theme="dark"][data-accent="terracotta"] {
     --primary-color: #e59083;
     --primary-hover: #d27b6d;
@@ -1589,6 +1613,7 @@ tr:hover {
     --primary-hover: #374151;
     --primary-light: #f3f4f6;
 }
+
 [data-theme="dark"][data-accent="slate"] {
     --primary-color: #9ca3af;
     --primary-hover: #808691;
@@ -1637,11 +1662,25 @@ tr:hover {
     box-shadow: 0 0 0 2px var(--card-bg) inset;
 }
 
-.accent-btn.accent-indigo { background-color: #4f46e5; }
-.accent-btn.accent-sage { background-color: #3b7a57; }
-.accent-btn.accent-teal { background-color: #0f766e; }
-.accent-btn.accent-terracotta { background-color: #b05c50; }
-.accent-btn.accent-slate { background-color: #4b5563; }
+.accent-btn.accent-indigo {
+    background-color: #7B1818;
+}
+
+.accent-btn.accent-sage {
+    background-color: #3b7a57;
+}
+
+.accent-btn.accent-teal {
+    background-color: #0f766e;
+}
+
+.accent-btn.accent-terracotta {
+    background-color: #b05c50;
+}
+
+.accent-btn.accent-slate {
+    background-color: #4b5563;
+}
 
 /* Auth Screen Page Background Overlay Setup */
 .auth-page-container {
@@ -1808,3 +1847,111 @@ tr:hover {
     cursor: pointer;
 }
 
+/* ==========================================================================
+   THAPAR AUTH THEME
+   ========================================================================== */
+
+.auth-page-container .auth-card {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    box-shadow: 0 20px 60px rgba(123, 24, 24, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .auth-page-container .auth-card {
+    background: rgba(20, 10, 10, 0.88);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.auth-card h1 {
+    font-family: 'Outfit', sans-serif;
+    color: #7B1818;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+[data-theme="dark"] .auth-card h1 {
+    color: #e8b86d;
+}
+
+.auth-card .subtitle {
+    color: #9a6c2e;
+    font-size: 0.875rem;
+}
+
+[data-theme="dark"] .auth-card .subtitle {
+    color: #a07840;
+}
+
+.auth-card .form-container h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #7B1818;
+    border-bottom: 2px solid rgba(201, 168, 76, 0.3);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+[data-theme="dark"] .auth-card .form-container h2 {
+    color: #e8b86d;
+    border-bottom-color: rgba(201, 168, 76, 0.2);
+}
+
+.auth-card .form-group input:focus,
+.auth-card .form-group select:focus,
+.auth-card .form-group textarea:focus {
+    border-color: #7B1818;
+    box-shadow: 0 0 0 3px rgba(123, 24, 24, 0.1);
+}
+
+[data-theme="dark"] .auth-card .form-group input:focus,
+[data-theme="dark"] .auth-card .form-group select:focus,
+[data-theme="dark"] .auth-card .form-group textarea:focus {
+    border-color: #e8b86d;
+    box-shadow: 0 0 0 3px rgba(232, 184, 109, 0.1);
+}
+
+.auth-card .btn-primary {
+    background: linear-gradient(135deg, #7B1818 0%, #9e2121 100%);
+    color: white;
+    border: none;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 14px rgba(123, 24, 24, 0.3);
+}
+
+.auth-card .btn-primary:hover {
+    background: linear-gradient(135deg, #641414 0%, #7B1818 100%);
+    box-shadow: 0 6px 20px rgba(123, 24, 24, 0.4);
+    transform: translateY(-1.5px);
+}
+
+.auth-card .toggle-text {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.auth-card .toggle-text a {
+    color: #7B1818;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-card .toggle-text a:hover {
+    color: #9e2121;
+    text-decoration: underline;
+}
+
+[data-theme="dark"] .auth-card .toggle-text a {
+    color: #e8b86d;
+}
+
+[data-theme="dark"] .auth-card .toggle-text a:hover {
+    color: #f5cd8a;
+}

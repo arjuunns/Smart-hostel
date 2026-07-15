@@ -5,14 +5,17 @@ const reportService = {
         const params = new URLSearchParams(filters).toString();
         return request(`/reports/leaves${params ? '?' + params : ''}`);
     },
+
     async getAttendanceReport(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         return request(`/reports/attendance${params ? '?' + params : ''}`);
     },
+
     async getGateLogsReport(filters = {}) {
         const params = new URLSearchParams(filters).toString();
         return request(`/reports/gate-logs${params ? '?' + params : ''}`);
     },
+
     downloadCSV(endpoint, filters = {}) {
         const params = new URLSearchParams({ ...filters, format: 'csv' }).toString();
         const token = localStorage.getItem('token');
