@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import logo from '../assets/image.png';
+import thaparBg from '../assets/1.jpg';
 
 const Auth = () => {
     const { user, login, register } = useAuth();
@@ -129,9 +130,9 @@ const Auth = () => {
     else strengthClass = 'strong';
 
     return (
-        <div className="container">
-            <div className="auth-card">
-                <div className="theme-toggle" onClick={toggleTheme} style={{ position: 'absolute', top: '16px', right: '16px' }}>
+        <div className="auth-page-container" style={{ backgroundImage: `url(${thaparBg})` }}>
+            <div className="auth-card" style={{ zIndex: 2 }}>
+                <div className="theme-toggle" onClick={toggleTheme} style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 3 }}>
                     <svg className="theme-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {theme === 'dark' ? (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z" />

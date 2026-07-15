@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -57,7 +57,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Deploy via SSH to EC2
+      - name: Copy Backend to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "backend/**"
+          target: "~/smart-hostel"
+
+      - name: Run Backend Setup on EC2
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -65,32 +75,22 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # Navigate to the app directory
-            cd ~/Smart-hostel || cd ~/smart-hostel || mkdir -p ~/smart-hostel && cd ~/smart-hostel
-            
-            # Pull latest changes from the repository
-            if [ -d .git ]; then
-              git pull origin main
-            else
-              git clone https://github.com/${{ github.repository }}.git .
-            fi
+            # Navigate to the backend directory on EC2
+            cd ~/smart-hostel/backend
 
-            # Set up Environment variables on EC2 if they don't exist
-            echo "PORT=5000" > backend/.env
-            echo "DATABASE_URL=\"${{ secrets.DATABASE_URL }}\"" >> backend/.env
-            echo "JWT_SECRET=\"${{ secrets.JWT_SECRET }}\"" >> backend/.env
+            # Create/Overwrite the environment config
+            echo "PORT=5000" > .env
+            echo "DATABASE_URL=\"${{ secrets.DATABASE_URL }}\"" >> .env
+            echo "JWT_SECRET=\"${{ secrets.JWT_SECRET }}\"" >> .env
 
-            # Navigate to backend
-            cd backend
-            
-            # Install backend dependencies
+            # Install production dependencies
             npm install --production
 
             # Generate Prisma Client
             npx prisma generate
 
-            # Push schema changes to Neon DB
+            # Synchronize database schema with Neon
             npx prisma db push
 
-            # Restart/Start application process with PM2
+            # Restart/Start backend using PM2
             pm2 restart smart-hostel-api || pm2 start server.js --name "smart-hostel-api"

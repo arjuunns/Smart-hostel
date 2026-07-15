@@ -12,7 +12,7 @@ import {
 
 const WardenDashboard = () => {
     const { user, logout } = useAuth();
-    const { theme, toggleTheme } = useTheme();
+    const { theme, toggleTheme, accent, setAccent } = useTheme();
     const [activeSection, setActiveSection] = useState('dashboard');
 
     // Dashboard States
@@ -22,6 +22,9 @@ const WardenDashboard = () => {
     const [emergencyLeaves, setEmergencyLeaves] = useState([]);
     const [mlInsights, setMlInsights] = useState({ avgRiskScore: '-', autoApprovalRate: '-', highRiskStudents: 0, activeRestrictions: 0 });
     const [dashboardLoading, setDashboardLoading] = useState(true);
+
+    // Sidebar Responsive Toggle
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Section Specific States
     const [flaggedLeaves, setFlaggedLeaves] = useState([]);
@@ -428,8 +431,13 @@ const WardenDashboard = () => {
 
     return (
         <div className="dashboard">
+            {/* Sidebar Overlay */}
+            {sidebarOpen && (
+                <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}></div>
+            )}
+
             {/* Sidebar */}
-            <aside className="sidebar">
+            <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                 <h2>
                     <img src={logo} alt="Smart Hostel" className="logo" /> Smart Hostel
                 </h2>
@@ -441,63 +449,63 @@ const WardenDashboard = () => {
                     <a
                         href="#"
                         className={activeSection === 'dashboard' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('dashboard'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('dashboard'); setSidebarOpen(false); }}
                     >
                         Dashboard
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'flagged-leaves' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('flagged-leaves'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('flagged-leaves'); setSidebarOpen(false); }}
                     >
                         Flagged Leaves
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'pending-leaves' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('pending-leaves'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('pending-leaves'); setSidebarOpen(false); }}
                     >
                         Pending Leaves
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'all-leaves' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('all-leaves'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('all-leaves'); setSidebarOpen(false); }}
                     >
                         All Leaves
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'attendance' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('attendance'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('attendance'); setSidebarOpen(false); }}
                     >
                         Attendance
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'out-students' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('out-students'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('out-students'); setSidebarOpen(false); }}
                     >
                         Out Students
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'reports' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('reports'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('reports'); setSidebarOpen(false); }}
                     >
                         Reports
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'calendar' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('calendar'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('calendar'); setSidebarOpen(false); }}
                     >
                         Academic Calendar
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'mongodb-analytics' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('mongodb-analytics'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('mongodb-analytics'); setSidebarOpen(false); }}
                     >
                         Analytics
                     </a>
@@ -512,6 +520,16 @@ const WardenDashboard = () => {
                     </svg>
                     <span>Toggle Theme</span>
                 </div>
+                <div className="accent-section">
+                    <div className="accent-section-title">Color Theme</div>
+                    <div className="accent-picker">
+                        <button className={`accent-btn accent-indigo ${accent === 'indigo' ? 'active' : ''}`} onClick={() => setAccent('indigo')}></button>
+                        <button className={`accent-btn accent-sage ${accent === 'sage' ? 'active' : ''}`} onClick={() => setAccent('sage')}></button>
+                        <button className={`accent-btn accent-teal ${accent === 'teal' ? 'active' : ''}`} onClick={() => setAccent('teal')}></button>
+                        <button className={`accent-btn accent-terracotta ${accent === 'terracotta' ? 'active' : ''}`} onClick={() => setAccent('terracotta')}></button>
+                        <button className={`accent-btn accent-slate ${accent === 'slate' ? 'active' : ''}`} onClick={() => setAccent('slate')}></button>
+                    </div>
+                </div>
                 <div className="logout-btn">
                     <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
                         Logout
@@ -521,6 +539,15 @@ const WardenDashboard = () => {
 
             {/* Main Content */}
             <main className="main-content">
+                {/* Mobile Header Bar */}
+                <header className="mobile-header">
+                    <button className="menu-toggle" onClick={() => setSidebarOpen(true)}>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <span className="mobile-logo-text">Smart Hostel</span>
+                </header>
                 {activeSection === 'dashboard' && (
                     <section id="dashboard-section">
                         <h1>Warden Dashboard</h1>
