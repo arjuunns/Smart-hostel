@@ -8,73 +8,77 @@
 }
 
 :root {
-    --primary-color: #4f46e5;
-    --primary-hover: #4338ca;
-    --primary-light: #eeeffe;
+    /* Thapar University Brand Colors */
+    --primary-color: #7B1818;
+    --primary-hover: #641414;
+    --primary-light: #fdf0f0;
+
     --success-color: #0f9f6e;
     --success-light: #e6f6ee;
     --danger-color: #f05252;
     --danger-light: #fde8e8;
-    --warning-color: #d03801;
-    --warning-light: #fdf2e9;
-    --bg-color: #f9fafb;
-    --card-bg: rgba(255, 255, 255, 0.85);
-    --text-color: #111928;
-    --text-muted: #637381;
-    --border-color: #e5e7eb;
-    --sidebar-bg: rgba(255, 255, 255, 0.95);
-    --hover-bg: #f3f4f6;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-    --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
-    --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+    --warning-color: #b45309;
+    --warning-light: #fdf3e3;
+
+    --bg-color: #faf8f7;
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --text-color: #1a0a0a;
+    --text-muted: #6b5555;
+    --border-color: #e8e0e0;
+    --sidebar-bg: rgba(255, 255, 255, 0.97);
+    --hover-bg: #f7f0f0;
+
+    --shadow-sm: 0 1px 2px 0 rgba(123, 24, 24, 0.04);
+    --shadow: 0 4px 20px -2px rgba(123, 24, 24, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 10px 30px -5px rgba(123, 24, 24, 0.1), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Dark Mode */
 [data-theme="dark"] {
-    --primary-color: #818cf8;
-    --primary-hover: #6366f1;
-    --primary-light: #232244;
+    --primary-color: #e8b86d;
+    --primary-hover: #d4a459;
+    --primary-light: #2e1c08;
     --success-color: #34d399;
     --success-light: #132b1f;
     --danger-color: #f87171;
     --danger-light: #371616;
     --warning-color: #fbbf24;
     --warning-light: #2e1d0f;
-    --bg-color: #0b0f17;
-    --card-bg: rgba(21, 24, 33, 0.85);
-    --text-color: #f3f4f6;
-    --text-muted: #9ca3af;
-    --border-color: #1f2937;
-    --sidebar-bg: rgba(16, 18, 26, 0.95);
-    --hover-bg: #1f2937;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-    --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+    --bg-color: #120808;
+    --card-bg: rgba(28, 12, 12, 0.88);
+    --text-color: #f5eaea;
+    --text-muted: #b89090;
+    --border-color: #2e1515;
+    --sidebar-bg: rgba(20, 8, 8, 0.97);
+    --hover-bg: #2a1010;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+    --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.25);
 }
 
 /* System preference detection */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-        --primary-color: #818cf8;
-        --primary-hover: #6366f1;
-        --primary-light: #232244;
+        --primary-color: #e8b86d;
+        --primary-hover: #d4a459;
+        --primary-light: #2e1c08;
         --success-color: #34d399;
         --success-light: #132b1f;
         --danger-color: #f87171;
         --danger-light: #371616;
         --warning-color: #fbbf24;
         --warning-light: #2e1d0f;
-        --bg-color: #0b0f17;
-        --card-bg: rgba(21, 24, 33, 0.85);
-        --text-color: #f3f4f6;
-        --text-muted: #9ca3af;
-        --border-color: #1f2937;
-        --sidebar-bg: rgba(16, 18, 26, 0.95);
-        --hover-bg: #1f2937;
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-        --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
-        --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+        --bg-color: #120808;
+        --card-bg: rgba(28, 12, 12, 0.88);
+        --text-color: #f5eaea;
+        --text-muted: #b89090;
+        --border-color: #2e1515;
+        --sidebar-bg: rgba(20, 8, 8, 0.97);
+        --hover-bg: #2a1010;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+        --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
+        --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.25);
     }
 }
 
@@ -82,8 +86,8 @@ body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--bg-color);
     background-image: 
-        radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.05) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.05) 0px, transparent 50%);
+        radial-gradient(at 0% 0%, rgba(123, 24, 24, 0.06) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(201, 168, 76, 0.04) 0px, transparent 50%);
     color: var(--text-color);
     line-height: 1.6;
     transition: background-color var(--transition), color var(--transition);
@@ -1637,7 +1641,7 @@ tr:hover {
     box-shadow: 0 0 0 2px var(--card-bg) inset;
 }
 
-.accent-btn.accent-indigo { background-color: #4f46e5; }
+.accent-btn.accent-indigo { background-color: #7B1818; }
 .accent-btn.accent-sage { background-color: #3b7a57; }
 .accent-btn.accent-teal { background-color: #0f766e; }
 .accent-btn.accent-terracotta { background-color: #b05c50; }
@@ -1808,3 +1812,111 @@ tr:hover {
     cursor: pointer;
 }
 
+/* ==========================================================================
+   THAPAR AUTH THEME
+   ========================================================================== */
+
+.auth-page-container .auth-card {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    box-shadow: 0 20px 60px rgba(123, 24, 24, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .auth-page-container .auth-card {
+    background: rgba(20, 10, 10, 0.88);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.auth-card h1 {
+    font-family: 'Outfit', sans-serif;
+    color: #7B1818;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+[data-theme="dark"] .auth-card h1 {
+    color: #e8b86d;
+}
+
+.auth-card .subtitle {
+    color: #9a6c2e;
+    font-size: 0.875rem;
+}
+
+[data-theme="dark"] .auth-card .subtitle {
+    color: #a07840;
+}
+
+.auth-card .form-container h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #7B1818;
+    border-bottom: 2px solid rgba(201, 168, 76, 0.3);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+[data-theme="dark"] .auth-card .form-container h2 {
+    color: #e8b86d;
+    border-bottom-color: rgba(201, 168, 76, 0.2);
+}
+
+.auth-card .form-group input:focus,
+.auth-card .form-group select:focus,
+.auth-card .form-group textarea:focus {
+    border-color: #7B1818;
+    box-shadow: 0 0 0 3px rgba(123, 24, 24, 0.1);
+}
+
+[data-theme="dark"] .auth-card .form-group input:focus,
+[data-theme="dark"] .auth-card .form-group select:focus,
+[data-theme="dark"] .auth-card .form-group textarea:focus {
+    border-color: #e8b86d;
+    box-shadow: 0 0 0 3px rgba(232, 184, 109, 0.1);
+}
+
+.auth-card .btn-primary {
+    background: linear-gradient(135deg, #7B1818 0%, #9e2121 100%);
+    color: white;
+    border: none;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 14px rgba(123, 24, 24, 0.3);
+}
+
+.auth-card .btn-primary:hover {
+    background: linear-gradient(135deg, #641414 0%, #7B1818 100%);
+    box-shadow: 0 6px 20px rgba(123, 24, 24, 0.4);
+    transform: translateY(-1.5px);
+}
+
+.auth-card .toggle-text {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.auth-card .toggle-text a {
+    color: #7B1818;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-card .toggle-text a:hover {
+    color: #9e2121;
+    text-decoration: underline;
+}
+
+[data-theme="dark"] .auth-card .toggle-text a {
+    color: #e8b86d;
+}
+
+[data-theme="dark"] .auth-card .toggle-text a:hover {
+    color: #f5cd8a;
+}
