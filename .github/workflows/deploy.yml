@@ -75,6 +75,22 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
+            # 1. Load NVM if it exists (handles path issues in non-interactive shells)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            # 2. Self-Healing: Install Node.js/NPM if completely missing
+            if ! command -v npm &> /dev/null; then
+              echo "npm not found. Attempting package manager installation..."
+              sudo apt-get update && sudo apt-get install -y nodejs npm
+            fi
+
+            # 3. Self-Healing: Install PM2 if missing
+            if ! command -v pm2 &> /dev/null; then
+              echo "pm2 not found. Installing globally..."
+              sudo npm install -g pm2
+            fi
+
             # Navigate to the backend directory on EC2
             cd ~/smart-hostel/backend
 
