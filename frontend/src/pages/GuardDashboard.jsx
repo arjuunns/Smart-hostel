@@ -212,16 +212,7 @@ const GuardDashboard = () => {
                     </svg>
                     <span>Toggle Theme</span>
                 </div>
-                <div className="accent-section">
-                    <div className="accent-section-title">Color Theme</div>
-                    <div className="accent-picker">
-                        <button className={`accent-btn accent-indigo ${accent === 'indigo' ? 'active' : ''}`} onClick={() => setAccent('indigo')}></button>
-                        <button className={`accent-btn accent-sage ${accent === 'sage' ? 'active' : ''}`} onClick={() => setAccent('sage')}></button>
-                        <button className={`accent-btn accent-teal ${accent === 'teal' ? 'active' : ''}`} onClick={() => setAccent('teal')}></button>
-                        <button className={`accent-btn accent-terracotta ${accent === 'terracotta' ? 'active' : ''}`} onClick={() => setAccent('terracotta')}></button>
-                        <button className={`accent-btn accent-slate ${accent === 'slate' ? 'active' : ''}`} onClick={() => setAccent('slate')}></button>
-                    </div>
-                </div>
+
                 <div className="logout-btn">
                     <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
                         Logout

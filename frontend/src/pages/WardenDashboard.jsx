@@ -20,7 +20,7 @@ const WardenDashboard = () => {
     const [recentPending, setRecentPending] = useState([]);
     const [flaggedAlerts, setFlaggedAlerts] = useState([]);
     const [emergencyLeaves, setEmergencyLeaves] = useState([]);
-    const [mlInsights, setMlInsights] = useState({ avgRiskScore: '-', autoApprovalRate: '-', highRiskStudents: 0, activeRestrictions: 0 });
+    const [insights, setInsights] = useState({ approvedToday: '-', autoApproved: '-', flaggedCount: 0, activeRestrictions: 0 });
     const [dashboardLoading, setDashboardLoading] = useState(true);
 
     // Sidebar Responsive Toggle
@@ -149,25 +149,15 @@ const WardenDashboard = () => {
                 overstay: overstayCount
             });
 
-            // ML Insights & Restrictions
-            const mlRes = await api.getMLDashboard();
-            let avgRiskScore = '-';
-            let autoApprovalRate = '-';
-            let highRiskStudents = 0;
-            if (mlRes.success) {
-                const ml = mlRes.data;
-                avgRiskScore = ml.averageRiskScore?.toFixed(1) || '-';
-                autoApprovalRate = ml.autoApprovalRate ? `${(ml.autoApprovalRate * 100).toFixed(1)}%` : '-';
-                highRiskStudents = ml.highRiskCount || 0;
-            }
-
+            // Insights & Restrictions
             const calRes = await api.getCurrentRestrictions();
-            let activeRestrictions = 0;
-            if (calRes.success) {
-                activeRestrictions = calRes.data.activeRestrictions?.length || 0;
-            }
-
-            setMlInsights({ avgRiskScore, autoApprovalRate, highRiskStudents, activeRestrictions });
+            const activeRestrictions = calRes.success ? (calRes.data?.length || 0) : 0;
+            setInsights({
+                approvedToday: stats.approved ?? '-',
+                autoApproved: stats.autoApproved ?? '-',
+                flaggedCount: flaggedLeaves.length,
+                activeRestrictions
+            });
         } catch (err) {
             console.error('Error loading dashboard:', err);
         } finally {
@@ -520,16 +510,7 @@ const WardenDashboard = () => {
                     </svg>
                     <span>Toggle Theme</span>
                 </div>
-                <div className="accent-section">
-                    <div className="accent-section-title">Color Theme</div>
-                    <div className="accent-picker">
-                        <button className={`accent-btn accent-indigo ${accent === 'indigo' ? 'active' : ''}`} onClick={() => setAccent('indigo')}></button>
-                        <button className={`accent-btn accent-sage ${accent === 'sage' ? 'active' : ''}`} onClick={() => setAccent('sage')}></button>
-                        <button className={`accent-btn accent-teal ${accent === 'teal' ? 'active' : ''}`} onClick={() => setAccent('teal')}></button>
-                        <button className={`accent-btn accent-terracotta ${accent === 'terracotta' ? 'active' : ''}`} onClick={() => setAccent('terracotta')}></button>
-                        <button className={`accent-btn accent-slate ${accent === 'slate' ? 'active' : ''}`} onClick={() => setAccent('slate')}></button>
-                    </div>
-                </div>
+
                 <div className="logout-btn">
                     <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
                         Logout
@@ -579,32 +560,32 @@ const WardenDashboard = () => {
                             </div>
                         </div>
 
-                        {/* ML Insights Card */}
-                        <div className="card ml-insights-card">
-                            <h3>AI/ML Insights</h3>
-                            <div className="ml-insights-grid">
-                                <div className="ml-insight">
-                                    <div className="ml-insight-content">
-                                        <div className="ml-insight-value">{mlInsights.avgRiskScore}</div>
-                                        <div className="ml-insight-label">Avg Risk Score (Today)</div>
+                        {/* Insights Card */}
+                        <div className="card insights-card">
+                            <h3>Insights</h3>
+                            <div className="insights-grid">
+                                <div className="insight-item">
+                                    <div className="insight-content">
+                                        <div className="insight-value">{insights.approvedToday}</div>
+                                        <div className="insight-label">Approved Leaves</div>
                                     </div>
                                 </div>
-                                <div className="ml-insight">
-                                    <div className="ml-insight-content">
-                                        <div className="ml-insight-value">{mlInsights.autoApprovalRate}</div>
-                                        <div className="ml-insight-label">Auto-Approval Rate</div>
+                                <div className="insight-item">
+                                    <div className="insight-content">
+                                        <div className="insight-value">{insights.autoApproved}</div>
+                                        <div className="insight-label">Auto-Approved</div>
                                     </div>
                                 </div>
-                                <div className="ml-insight">
-                                    <div className="ml-insight-content">
-                                        <div className="ml-insight-value">{mlInsights.highRiskStudents}</div>
-                                        <div className="ml-insight-label">High-Risk Students</div>
+                                <div className="insight-item">
+                                    <div className="insight-content">
+                                        <div className="insight-value">{insights.flaggedCount}</div>
+                                        <div className="insight-label">Flagged Leaves</div>
                                     </div>
                                 </div>
-                                <div className="ml-insight">
-                                    <div className="ml-insight-content">
-                                        <div className="ml-insight-value">{mlInsights.activeRestrictions}</div>
-                                        <div className="ml-insight-label">Active Restrictions</div>
+                                <div className="insight-item">
+                                    <div className="insight-content">
+                                        <div className="insight-value">{insights.activeRestrictions}</div>
+                                        <div className="insight-label">Active Restrictions</div>
                                     </div>
                                 </div>
                             </div>
