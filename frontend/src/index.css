@@ -2017,4 +2017,21 @@ input[type="date"]::-webkit-datetime-edit-month-field,
 input[type="date"]::-webkit-datetime-edit-day-field,
 input[type="date"]::-webkit-datetime-edit-year-field {
     color: var(--text-color);
-}
+}
+
+/* Custom CSS to style the native calendar popup on supported engines */
+::-webkit-calendar-picker {
+    color: var(--text-color);
+    background-color: var(--bg-color);
+}
+
+/* Styling calendar picker sub-elements natively for Webkit engines */
+::-webkit-calendar-picker-indicator {
+    border-radius: 4px;
+    padding: 4px;
+}
+
+::-webkit-calendar-picker-indicator:hover {
+    background-color: var(--hover-bg);
+}
+
