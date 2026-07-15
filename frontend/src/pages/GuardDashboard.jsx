@@ -7,7 +7,7 @@ import { formatDateTime } from '../utils/helpers';
 
 const GuardDashboard = () => {
     const { user, logout } = useAuth();
-    const { theme, toggleTheme } = useTheme();
+    const { theme, toggleTheme, accent, setAccent } = useTheme();
     const [activeSection, setActiveSection] = useState('scan');
 
     // Stats
@@ -21,6 +21,9 @@ const GuardDashboard = () => {
     // Out List & Overstayed States
     const [outStudents, setOutStudents] = useState([]);
     const [overstayedStudents, setOverstayedStudents] = useState([]);
+
+    // Sidebar Responsive Toggle
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Logs States
     const [logDate, setLogDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -162,8 +165,13 @@ const GuardDashboard = () => {
 
     return (
         <div className="dashboard">
+            {/* Sidebar Overlay */}
+            {sidebarOpen && (
+                <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}></div>
+            )}
+
             {/* Sidebar */}
-            <aside className="sidebar">
+            <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                 <h2>
                     <img src={logo} alt="Smart Hostel" className="logo" /> Smart Hostel
                 </h2>
@@ -175,21 +183,21 @@ const GuardDashboard = () => {
                     <a
                         href="#"
                         className={activeSection === 'scan' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('scan'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('scan'); setSidebarOpen(false); }}
                     >
                         Scan Gate Pass
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'out-list' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('out-list'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('out-list'); setSidebarOpen(false); }}
                     >
                         Out Students
                     </a>
                     <a
                         href="#"
                         className={activeSection === 'logs' ? 'active' : ''}
-                        onClick={(e) => { e.preventDefault(); setActiveSection('logs'); }}
+                        onClick={(e) => { e.preventDefault(); setActiveSection('logs'); setSidebarOpen(false); }}
                     >
                         Gate Logs
                     </a>
@@ -204,6 +212,16 @@ const GuardDashboard = () => {
                     </svg>
                     <span>Toggle Theme</span>
                 </div>
+                <div className="accent-section">
+                    <div className="accent-section-title">Color Theme</div>
+                    <div className="accent-picker">
+                        <button className={`accent-btn accent-indigo ${accent === 'indigo' ? 'active' : ''}`} onClick={() => setAccent('indigo')}></button>
+                        <button className={`accent-btn accent-sage ${accent === 'sage' ? 'active' : ''}`} onClick={() => setAccent('sage')}></button>
+                        <button className={`accent-btn accent-teal ${accent === 'teal' ? 'active' : ''}`} onClick={() => setAccent('teal')}></button>
+                        <button className={`accent-btn accent-terracotta ${accent === 'terracotta' ? 'active' : ''}`} onClick={() => setAccent('terracotta')}></button>
+                        <button className={`accent-btn accent-slate ${accent === 'slate' ? 'active' : ''}`} onClick={() => setAccent('slate')}></button>
+                    </div>
+                </div>
                 <div className="logout-btn">
                     <button className="btn btn-secondary" onClick={logout} style={{ width: '100%' }}>
                         Logout
@@ -213,6 +231,15 @@ const GuardDashboard = () => {
 
             {/* Main Content */}
             <main className="main-content">
+                {/* Mobile Header Bar */}
+                <header className="mobile-header">
+                    <button className="menu-toggle" onClick={() => setSidebarOpen(true)}>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <span className="mobile-logo-text">Smart Hostel</span>
+                </header>
                 {activeSection === 'scan' && (
                     <section id="scan-section">
                         <h1>Gate Pass Scanner</h1>
