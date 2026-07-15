@@ -356,7 +356,7 @@ const WardenDashboard = () => {
 
     const handleAttendanceSelectChange = (studentId, status) => {
         setAttendanceRecords(prev => prev.map(rec => {
-            if (rec.student?._id === studentId) {
+            if (rec.student?.id === studentId) {
                 return { ...rec, status };
             }
             return rec;
@@ -372,7 +372,7 @@ const WardenDashboard = () => {
         const records = attendanceRecords
             .filter(r => r.status && r.status !== 'NOT_MARKED')
             .map(r => ({
-                studentId: r.student._id,
+                studentId: r.student.id,
                 status: r.status
             }));
 
@@ -983,7 +983,7 @@ const WardenDashboard = () => {
                                             </tr>
                                         ) : (
                                             attendanceRecords.map(item => (
-                                                <tr key={item.student?._id}>
+                                                <tr key={item.student?.id}>
                                                     <td>{item.student?.name}</td>
                                                     <td>{item.student?.hostelBlock || '-'} / {item.student?.roomNo || '-'}</td>
                                                     <td>
@@ -999,7 +999,7 @@ const WardenDashboard = () => {
                                                         <select
                                                             className="attendance-select"
                                                             value={item.status === 'NOT_MARKED' ? '' : item.status}
-                                                            onChange={(e) => handleAttendanceSelectChange(item.student?._id, e.target.value)}
+                                                            onChange={(e) => handleAttendanceSelectChange(item.student?.id, e.target.value)}
                                                         >
                                                             <option value="">-- Select --</option>
                                                             <option value="PRESENT">Present</option>

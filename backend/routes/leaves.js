@@ -172,10 +172,15 @@ router.get('/pending', protect, authorize('warden', 'admin'), async (req, res) =
             orderBy: { createdAt: 'desc' }
         });
 
+        const formatted = leaves.map(l => ({
+            ...l,
+            _id: l.id
+        }));
+
         res.json({
             success: true,
-            count: leaves.length,
-            data: leaves
+            count: formatted.length,
+            data: formatted
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -212,10 +217,15 @@ router.get('/all', protect, authorize('warden', 'admin'), async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
+        const formatted = leaves.map(l => ({
+            ...l,
+            _id: l.id
+        }));
+
         res.json({
             success: true,
-            count: leaves.length,
-            data: leaves
+            count: formatted.length,
+            data: formatted
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -244,10 +254,15 @@ router.get('/emergency', protect, authorize('warden', 'admin'), async (req, res)
             orderBy: { createdAt: 'desc' }
         });
 
+        const formatted = leaves.map(l => ({
+            ...l,
+            _id: l.id
+        }));
+
         res.json({
             success: true,
-            count: leaves.length,
-            data: leaves
+            count: formatted.length,
+            data: formatted
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -383,10 +398,15 @@ router.get('/flagged', protect, authorize('warden', 'admin'), async (req, res) =
             orderBy: { createdAt: 'desc' }
         });
 
+        const formatted = flagged.map(l => ({
+            ...l,
+            _id: l.id
+        }));
+
         res.json({
             success: true,
-            count: flagged.length,
-            data: flagged
+            count: formatted.length,
+            data: formatted
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -448,7 +468,10 @@ router.get('/:leaveId', protect, async (req, res) => {
 
         res.json({
             success: true,
-            data: leave
+            data: {
+                ...leave,
+                _id: leave.id
+            }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
