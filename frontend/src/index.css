@@ -19,7 +19,6 @@
     --danger-light: #fde8e8;
     --warning-color: #b45309;
     --warning-light: #fdf3e3;
-
     --bg-color: #faf8f7;
     --card-bg: rgba(255, 255, 255, 0.9);
     --text-color: #1a0a0a;
@@ -27,7 +26,6 @@
     --border-color: #e8e0e0;
     --sidebar-bg: rgba(255, 255, 255, 0.97);
     --hover-bg: #f7f0f0;
-
     --shadow-sm: 0 1px 2px 0 rgba(123, 24, 24, 0.04);
     --shadow: 0 4px 20px -2px rgba(123, 24, 24, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
     --shadow-md: 0 10px 30px -5px rgba(123, 24, 24, 0.1), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
@@ -85,9 +83,9 @@
 body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--bg-color);
-    background-image: 
-        radial-gradient(at 0% 0%, rgba(123, 24, 24, 0.06) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(201, 168, 76, 0.04) 0px, transparent 50%);
+    background-image:
+        radial-gradient(at 0% 0%, rgba(123, 24, 24, 0.04) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(201, 168, 76, 0.02) 0px, transparent 50%);
     color: var(--text-color);
     line-height: 1.6;
     transition: background-color var(--transition), color var(--transition);
@@ -561,7 +559,8 @@ table {
     border-collapse: collapse;
 }
 
-th, td {
+th,
+td {
     padding: 14px 18px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
@@ -649,8 +648,15 @@ tr:hover {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
 }
 
 /* QR Code Display */
@@ -892,8 +898,13 @@ tr:hover {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Tab Navigation */
@@ -963,7 +974,8 @@ tr:hover {
 }
 
 /* Status Badges - Extended */
-.badge-auto_approved, .badge-auto-approved {
+.badge-auto_approved,
+.badge-auto-approved {
     background-color: #059669;
     color: white;
 }
@@ -1165,7 +1177,9 @@ tr:hover {
     text-align: right;
 }
 
-.prediction-warnings, .prediction-tips, .prediction-positives {
+.prediction-warnings,
+.prediction-tips,
+.prediction-positives {
     padding: 12px;
     border-radius: 8px;
     font-size: 0.9rem;
@@ -1186,7 +1200,9 @@ tr:hover {
     border-left: 3px solid var(--success-color);
 }
 
-.prediction-warnings ul, .prediction-tips ul, .prediction-positives ul {
+.prediction-warnings ul,
+.prediction-tips ul,
+.prediction-positives ul {
     list-style: disc;
     padding-left: 20px;
     margin-top: 8px;
@@ -1463,6 +1479,7 @@ tr:hover {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1557,6 +1574,7 @@ tr:hover {
     --primary-hover: #2d5d42;
     --primary-light: #eaf4ed;
 }
+
 [data-theme="dark"][data-accent="sage"] {
     --primary-color: #5bb381;
     --primary-hover: #48a070;
@@ -1569,6 +1587,7 @@ tr:hover {
     --primary-hover: #115e59;
     --primary-light: #e6f4f2;
 }
+
 [data-theme="dark"][data-accent="teal"] {
     --primary-color: #2ed2c5;
     --primary-hover: #21b0a5;
@@ -1581,6 +1600,7 @@ tr:hover {
     --primary-hover: #8f463c;
     --primary-light: #f7edeb;
 }
+
 [data-theme="dark"][data-accent="terracotta"] {
     --primary-color: #e59083;
     --primary-hover: #d27b6d;
@@ -1593,6 +1613,7 @@ tr:hover {
     --primary-hover: #374151;
     --primary-light: #f3f4f6;
 }
+
 [data-theme="dark"][data-accent="slate"] {
     --primary-color: #9ca3af;
     --primary-hover: #808691;
@@ -1641,11 +1662,25 @@ tr:hover {
     box-shadow: 0 0 0 2px var(--card-bg) inset;
 }
 
-.accent-btn.accent-indigo { background-color: #7B1818; }
-.accent-btn.accent-sage { background-color: #3b7a57; }
-.accent-btn.accent-teal { background-color: #0f766e; }
-.accent-btn.accent-terracotta { background-color: #b05c50; }
-.accent-btn.accent-slate { background-color: #4b5563; }
+.accent-btn.accent-indigo {
+    background-color: #7B1818;
+}
+
+.accent-btn.accent-sage {
+    background-color: #3b7a57;
+}
+
+.accent-btn.accent-teal {
+    background-color: #0f766e;
+}
+
+.accent-btn.accent-terracotta {
+    background-color: #b05c50;
+}
+
+.accent-btn.accent-slate {
+    background-color: #4b5563;
+}
 
 /* Auth Screen Page Background Overlay Setup */
 .auth-page-container {
