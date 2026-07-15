@@ -196,13 +196,17 @@ class CalendarService {
 
     // ===== CALENDAR MANAGEMENT =====
     static async createEvent(eventData, createdBy) {
-        const { startDate, endDate, ...rest } = eventData;
+        const { startDate, endDate, description, affectsHostels, affectsCourses, affectsYears, riskModifier, semester, ...rest } = eventData;
         return await prisma.academicCalendar.create({
             data: {
                 ...rest,
                 startDate: new Date(startDate),
                 endDate: new Date(endDate),
-                // createdBy field is not modeled on calendar schema since it was omitted or references user
+                riskModifier: riskModifier !== undefined ? parseInt(riskModifier) : 0,
+                semester: semester || 'BOTH',
+                affectsHostels: Array.isArray(affectsHostels) ? affectsHostels : [],
+                affectsCourses: Array.isArray(affectsCourses) ? affectsCourses : [],
+                affectsYears: Array.isArray(affectsYears) ? affectsYears.map(y => parseInt(y)) : []
             }
         });
     }
