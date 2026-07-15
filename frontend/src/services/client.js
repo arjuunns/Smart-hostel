@@ -7,7 +7,6 @@ const getHeaders = () => {
         ...(token && { Authorization: `Bearer ${token}` })
     };
 };
-
 const request = async (endpoint, options = {}) => {
     try {
         const response = await fetch(`${BASE_URL}${endpoint}`, {
