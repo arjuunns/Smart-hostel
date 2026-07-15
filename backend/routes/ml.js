@@ -1,20 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const MLPredictionService = require('../services/mlPredictionService');
-const Leave = require('../models/Leave');
+const { prisma } = require('../config/db');
 const { protect: auth } = require('../middleware/auth');
-
-/**
- * ML Prediction API Routes
- * Provides access to ML-based leave approval predictions
- */
 
 // ===== PREDICTION ROUTES =====
 
-/**
- * POST /api/ml/predict
- * Get ML prediction for a leave request
- */
 router.post('/predict', auth, async (req, res) => {
     try {
         const { fromDate, toDate, leaveType, reason } = req.body;
@@ -42,7 +33,6 @@ router.post('/predict', auth, async (req, res) => {
 
         const prediction = await MLPredictionService.predictLeaveApproval(leaveRequest, studentInfo);
 
-        // For students, return simplified view
         if (req.user.role === 'student') {
             return res.json({
                 success: true,
@@ -59,7 +49,6 @@ router.post('/predict', auth, async (req, res) => {
             });
         }
 
-        // For warden/admin, return full prediction
         res.json({
             success: true,
             data: prediction
@@ -70,24 +59,24 @@ router.post('/predict', auth, async (req, res) => {
     }
 });
 
-/**
- * POST /api/ml/predict/:leaveId
- * Get ML prediction for an existing leave request (warden/admin)
- */
 router.post('/predict/:leaveId', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        const leave = await Leave.findById(req.params.leaveId).populate('studentId');
+        const leaveId = parseInt(req.params.leaveId);
+        const leave = await prisma.leave.findUnique({
+            where: { id: leaveId },
+            include: { student: true }
+        });
         
         if (!leave) {
             return res.status(404).json({ success: false, message: 'Leave not found' });
         }
 
         const leaveRequest = {
-            studentId: leave.studentId._id,
+            studentId: leave.studentId,
             fromDate: leave.fromDateTime,
             toDate: leave.toDateTime,
             leaveType: leave.leaveType,
@@ -95,9 +84,9 @@ router.post('/predict/:leaveId', auth, async (req, res) => {
         };
 
         const studentInfo = {
-            hostelBlock: leave.studentId.hostelBlock,
-            course: leave.studentId.course,
-            year: leave.studentId.year
+            hostelBlock: leave.student.hostelBlock,
+            course: leave.student.course,
+            year: leave.student.year
         };
 
         const prediction = await MLPredictionService.predictLeaveApproval(leaveRequest, studentInfo);
@@ -106,8 +95,8 @@ router.post('/predict/:leaveId', auth, async (req, res) => {
             success: true,
             data: {
                 leave: {
-                    id: leave._id,
-                    studentName: leave.studentId.name,
+                    id: leave.id,
+                    studentName: leave.student.name,
                     fromDate: leave.fromDateTime,
                     toDate: leave.toDateTime,
                     leaveType: leave.leaveType,
@@ -121,20 +110,17 @@ router.post('/predict/:leaveId', auth, async (req, res) => {
     }
 });
 
-/**
- * POST /api/ml/predict-batch
- * Get predictions for multiple pending leaves (warden/admin)
- */
 router.post('/predict-batch', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        // Get all pending leaves
-        const pendingLeaves = await Leave.find({ status: 'PENDING' })
-            .populate('studentId', 'name email hostelBlock course year')
-            .sort({ createdAt: 1 });
+        const pendingLeaves = await prisma.leave.findMany({
+            where: { status: 'PENDING' },
+            include: { student: true },
+            orderBy: { createdAt: 'asc' }
+        });
 
         if (pendingLeaves.length === 0) {
             return res.json({
@@ -149,7 +135,7 @@ router.post('/predict-batch', auth, async (req, res) => {
         for (const leave of pendingLeaves) {
             try {
                 const leaveRequest = {
-                    studentId: leave.studentId._id,
+                    studentId: leave.studentId,
                     fromDate: leave.fromDateTime,
                     toDate: leave.toDateTime,
                     leaveType: leave.leaveType,
@@ -157,17 +143,17 @@ router.post('/predict-batch', auth, async (req, res) => {
                 };
 
                 const prediction = await MLPredictionService.predictLeaveApproval(leaveRequest, {
-                    hostelBlock: leave.studentId.hostelBlock,
-                    course: leave.studentId.course,
-                    year: leave.studentId.year
+                    hostelBlock: leave.student.hostelBlock,
+                    course: leave.student.course,
+                    year: leave.student.year
                 });
 
                 predictions.push({
                     leave: {
-                        id: leave._id,
-                        studentName: leave.studentId.name,
-                        studentEmail: leave.studentId.email,
-                        hostelBlock: leave.studentId.hostelBlock,
+                        id: leave.id,
+                        studentName: leave.student.name,
+                        studentEmail: leave.student.email,
+                        hostelBlock: leave.student.hostelBlock,
                         fromDate: leave.fromDateTime,
                         toDate: leave.toDateTime,
                         leaveType: leave.leaveType,
@@ -185,20 +171,18 @@ router.post('/predict-batch', auth, async (req, res) => {
                 });
             } catch (err) {
                 predictions.push({
-                    leave: { id: leave._id },
+                    leave: { id: leave.id },
                     error: err.message
                 });
             }
         }
 
-        // Sort by risk score (highest first)
         predictions.sort((a, b) => {
             const scoreA = a.prediction?.riskScore || 0;
             const scoreB = b.prediction?.riskScore || 0;
             return scoreB - scoreA;
         });
 
-        // Summary stats
         const summary = {
             total: predictions.length,
             autoApprove: predictions.filter(p => p.prediction?.decision === 'AUTO_APPROVE').length,
@@ -217,10 +201,6 @@ router.post('/predict-batch', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/ml/patterns/:studentId
- * Get detected patterns for a student (warden/admin)
- */
 router.get('/patterns/:studentId', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -238,10 +218,6 @@ router.get('/patterns/:studentId', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/ml/model-info
- * Get information about the ML model
- */
 router.get('/model-info', auth, async (req, res) => {
     try {
         const modelInfo = MLPredictionService.getModelInfo();
@@ -255,17 +231,12 @@ router.get('/model-info', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/ml/dashboard
- * Get ML dashboard statistics (warden/admin)
- */
 router.get('/dashboard', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        // Get recent predictions stats from leaves
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
         const [
@@ -275,22 +246,24 @@ router.get('/dashboard', auth, async (req, res) => {
             recentApproved,
             recentRejected
         ] = await Promise.all([
-            Leave.countDocuments({ status: 'PENDING' }),
-            Leave.countDocuments({ status: 'AUTO_APPROVED', createdAt: { $gte: thirtyDaysAgo } }),
-            Leave.countDocuments({ status: 'FLAGGED', createdAt: { $gte: thirtyDaysAgo } }),
-            Leave.countDocuments({ status: 'APPROVED', createdAt: { $gte: thirtyDaysAgo } }),
-            Leave.countDocuments({ status: 'REJECTED', createdAt: { $gte: thirtyDaysAgo } })
+            prisma.leave.count({ where: { status: 'PENDING' } }),
+            prisma.leave.count({ where: { status: 'AUTO_APPROVED', createdAt: { gte: thirtyDaysAgo } } }),
+            prisma.leave.count({ where: { status: 'FLAGGED', createdAt: { gte: thirtyDaysAgo } } }),
+            prisma.leave.count({ where: { status: 'APPROVED', createdAt: { gte: thirtyDaysAgo } } }),
+            prisma.leave.count({ where: { status: 'REJECTED', createdAt: { gte: thirtyDaysAgo } } })
         ]);
 
-        // Get high-risk pending leaves
-        const pendingLeaves = await Leave.find({ status: 'PENDING' })
-            .populate('studentId', 'name hostelBlock');
+        const pendingLeaves = await prisma.leave.findMany({
+            where: { status: 'PENDING' },
+            include: { student: true },
+            take: 10
+        });
         
         let highRiskCount = 0;
-        for (const leave of pendingLeaves.slice(0, 10)) {
+        for (const leave of pendingLeaves) {
             try {
                 const prediction = await MLPredictionService.predictLeaveApproval({
-                    studentId: leave.studentId._id,
+                    studentId: leave.studentId,
                     fromDate: leave.fromDateTime,
                     toDate: leave.toDateTime,
                     leaveType: leave.leaveType,
@@ -298,7 +271,7 @@ router.get('/dashboard', auth, async (req, res) => {
                 });
                 if (prediction.prediction.riskCategory === 'HIGH') highRiskCount++;
             } catch (e) {
-                // Ignore errors in dashboard calculation
+                // Ignore errors
             }
         }
 
@@ -322,11 +295,6 @@ router.get('/dashboard', auth, async (req, res) => {
     }
 });
 
-// ===== HELPER FUNCTIONS =====
-
-/**
- * Generate tips for students based on prediction
- */
 function generateStudentTips(prediction) {
     const tips = [];
     const riskScore = prediction.prediction.riskScore;

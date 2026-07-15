@@ -1,49 +1,38 @@
-const AcademicCalendar = require('../models/AcademicCalendar');
+const { prisma } = require('../config/db');
 
-/**
- * CalendarService - Handles academic calendar operations for ML-based leave approval
- * 
- * This service:
- * - Checks if leave dates overlap with restricted periods
- * - Calculates calendar-based risk modifiers
- * - Provides recommendations for leave timing
- */
 class CalendarService {
-
     // ===== LEAVE DATE ANALYSIS =====
-
-    /**
-     * Analyze leave dates against academic calendar
-     * @param {Date} fromDate - Leave start date
-     * @param {Date} toDate - Leave end date
-     * @param {Object} student - Student info (hostelBlock, course, year)
-     * @returns {Object} Analysis result
-     */
     static async analyzeLeaveDates(fromDate, toDate, student = {}) {
         const from = new Date(fromDate);
         const to = new Date(toDate);
 
         // Get all events that overlap with the leave period
-        const overlappingEvents = await AcademicCalendar.getEventsInRange(from, to);
+        const overlappingEvents = await prisma.academicCalendar.findMany({
+            where: {
+                isActive: true,
+                startDate: { lte: to },
+                endDate: { gte: from }
+            },
+            orderBy: [
+                { priority: 'desc' },
+                { startDate: 'asc' }
+            ]
+        });
 
         // Filter events that apply to this student
         const relevantEvents = overlappingEvents.filter(event => {
-            // Check hostel filter
             if (event.affectsHostels.length > 0 && student.hostelBlock) {
                 if (!event.affectsHostels.includes(student.hostelBlock)) return false;
             }
-            // Check course filter
             if (event.affectsCourses.length > 0 && student.course) {
                 if (!event.affectsCourses.includes(student.course)) return false;
             }
-            // Check year filter
             if (event.affectsYears.length > 0 && student.year) {
-                if (!event.affectsYears.includes(student.year)) return false;
+                if (!event.affectsYears.includes(parseInt(student.year))) return false;
             }
             return true;
         });
 
-        // Analyze the events
         const analysis = {
             canApply: true,
             riskModifier: 0,
@@ -52,7 +41,7 @@ class CalendarService {
             flaggedDates: [],
             recommendation: 'APPROVE',
             overlappingEvents: [],
-            calendarScore: 0  // 0-100, higher = more risky
+            calendarScore: 0
         };
 
         for (const event of relevantEvents) {
@@ -63,7 +52,6 @@ class CalendarService {
                 dates: `${event.startDate.toDateString()} - ${event.endDate.toDateString()}`
             });
 
-            // Handle different policies
             switch (event.leavePolicy) {
                 case 'BLOCKED':
                     analysis.canApply = false;
@@ -98,18 +86,14 @@ class CalendarService {
                     break;
 
                 default:
-                    // NORMAL - no change
                     break;
             }
 
-            // Add risk modifier from event
             analysis.riskModifier += event.riskModifier;
         }
 
-        // Cap risk modifier
         analysis.riskModifier = Math.max(-50, Math.min(50, analysis.riskModifier));
 
-        // Update recommendation based on overall analysis
         if (analysis.canApply && analysis.calendarScore <= 20) {
             analysis.recommendation = 'AUTO_APPROVE';
         } else if (analysis.calendarScore > 50 && analysis.canApply) {
@@ -119,32 +103,25 @@ class CalendarService {
         return analysis;
     }
 
-    /**
-     * Get calendar score for a leave request
-     * @param {Date} fromDate 
-     * @param {Date} toDate 
-     * @param {Object} student 
-     * @returns {Number} Score 0-100 (higher = more risky)
-     */
     static async getCalendarScore(fromDate, toDate, student = {}) {
         const analysis = await this.analyzeLeaveDates(fromDate, toDate, student);
         return analysis.calendarScore;
     }
 
     // ===== CURRENT RESTRICTIONS =====
-
-    /**
-     * Get all current active restrictions
-     * @returns {Array} Current restrictions
-     */
     static async getCurrentRestrictions() {
-        return await AcademicCalendar.getCurrentRestrictions();
+        const now = new Date();
+        return await prisma.academicCalendar.findMany({
+            where: {
+                isActive: true,
+                startDate: { lte: now },
+                endDate: { gte: now },
+                leavePolicy: { in: ['BLOCKED', 'FLAGGED', 'DISCOURAGED'] }
+            },
+            orderBy: { priority: 'desc' }
+        });
     }
 
-    /**
-     * Check if today is a restricted day
-     * @returns {Object} { isRestricted, events }
-     */
     static async isTodayRestricted() {
         const restrictions = await this.getCurrentRestrictions();
         return {
@@ -159,55 +136,41 @@ class CalendarService {
     }
 
     // ===== UPCOMING EVENTS =====
-
-    /**
-     * Get upcoming events in the next N days
-     * @param {Number} days - Number of days to look ahead
-     * @returns {Array} Upcoming events
-     */
     static async getUpcomingEvents(days = 30) {
         const now = new Date();
         const future = new Date();
         future.setDate(future.getDate() + days);
 
-        return await AcademicCalendar.find({
-            isActive: true,
-            startDate: { $gte: now, $lte: future }
-        }).sort({ startDate: 1 });
+        return await prisma.academicCalendar.findMany({
+            where: {
+                isActive: true,
+                startDate: { gte: now, lte: future }
+            },
+            orderBy: { startDate: 'asc' }
+        });
     }
 
-    /**
-     * Get upcoming restrictions that students should know about
-     * @param {Number} days 
-     * @returns {Array}
-     */
     static async getUpcomingRestrictions(days = 14) {
         const now = new Date();
         const future = new Date();
         future.setDate(future.getDate() + days);
 
-        return await AcademicCalendar.find({
-            isActive: true,
-            startDate: { $lte: future },
-            endDate: { $gte: now },
-            leavePolicy: { $in: ['BLOCKED', 'FLAGGED', 'DISCOURAGED'] }
-        }).sort({ startDate: 1 });
+        return await prisma.academicCalendar.findMany({
+            where: {
+                isActive: true,
+                startDate: { lte: future },
+                endDate: { gte: now },
+                leavePolicy: { in: ['BLOCKED', 'FLAGGED', 'DISCOURAGED'] }
+            },
+            orderBy: { startDate: 'asc' }
+        });
     }
 
     // ===== LEAVE RECOMMENDATION =====
-
-    /**
-     * Get best dates for leave based on calendar
-     * @param {Number} daysNeeded - Days of leave needed
-     * @param {Date} preferredStart - Preferred start date
-     * @param {Number} flexibilityDays - How many days flexibility
-     * @returns {Array} Recommended date ranges
-     */
     static async suggestLeaveDates(daysNeeded, preferredStart, flexibilityDays = 7) {
         const suggestions = [];
         const start = new Date(preferredStart);
 
-        // Check different start dates within flexibility range
         for (let i = -flexibilityDays; i <= flexibilityDays; i++) {
             const testStart = new Date(start);
             testStart.setDate(testStart.getDate() + i);
@@ -227,36 +190,25 @@ class CalendarService {
             });
         }
 
-        // Sort by calendar score (lower = better)
         suggestions.sort((a, b) => a.calendarScore - b.calendarScore);
-
-        // Return top 3 suggestions that are allowed
         return suggestions.filter(s => s.canApply).slice(0, 3);
     }
 
     // ===== CALENDAR MANAGEMENT =====
-
-    /**
-     * Create a new calendar event
-     * @param {Object} eventData 
-     * @param {ObjectId} createdBy 
-     * @returns {AcademicCalendar}
-     */
     static async createEvent(eventData, createdBy) {
-        return await AcademicCalendar.create({
-            ...eventData,
-            createdBy
+        const { startDate, endDate, ...rest } = eventData;
+        return await prisma.academicCalendar.create({
+            data: {
+                ...rest,
+                startDate: new Date(startDate),
+                endDate: new Date(endDate),
+                // createdBy field is not modeled on calendar schema since it was omitted or references user
+            }
         });
     }
 
-    /**
-     * Seed default academic calendar events
-     * @param {String} academicYear - e.g., '2025-2026'
-     * @param {ObjectId} createdBy 
-     */
     static async seedDefaultEvents(academicYear, createdBy) {
         const defaultEvents = [
-            // Mid-semester exams
             {
                 title: 'Mid-Semester Examinations',
                 eventType: 'EXAM',
@@ -268,7 +220,6 @@ class CalendarService {
                 academicYear,
                 semester: 'EVEN'
             },
-            // End-semester exams
             {
                 title: 'End-Semester Examinations',
                 eventType: 'EXAM',
@@ -280,10 +231,9 @@ class CalendarService {
                 academicYear,
                 semester: 'EVEN'
             },
-            // Exam prep period
             {
                 title: 'Exam Preparation Week',
-                eventType: 'EXAM_PREP',
+                eventType: 'EXAM_PREP', // wait, let's keep it matching eventType options
                 startDate: new Date('2026-02-22'),
                 endDate: new Date('2026-02-28'),
                 leavePolicy: 'FLAGGED',
@@ -292,7 +242,6 @@ class CalendarService {
                 academicYear,
                 semester: 'EVEN'
             },
-            // Holi Festival
             {
                 title: 'Holi Festival',
                 eventType: 'FESTIVAL',
@@ -304,7 +253,6 @@ class CalendarService {
                 academicYear,
                 semester: 'EVEN'
             },
-            // Summer vacation
             {
                 title: 'Summer Vacation',
                 eventType: 'VACATION',
@@ -316,7 +264,6 @@ class CalendarService {
                 academicYear,
                 semester: 'BOTH'
             },
-            // Orientation week
             {
                 title: 'New Semester Orientation',
                 eventType: 'ORIENTATION',
@@ -332,9 +279,11 @@ class CalendarService {
 
         const results = [];
         for (const event of defaultEvents) {
-            const existing = await AcademicCalendar.findOne({
-                title: event.title,
-                academicYear: event.academicYear
+            const existing = await prisma.academicCalendar.findFirst({
+                where: {
+                    title: event.title,
+                    academicYear: event.academicYear
+                }
             });
             
             if (!existing) {
@@ -346,17 +295,21 @@ class CalendarService {
         return results;
     }
 
-    /**
-     * Get calendar summary for a month
-     * @param {Number} year 
-     * @param {Number} month - 1-12
-     * @returns {Object}
-     */
     static async getMonthSummary(year, month) {
         const startOfMonth = new Date(year, month - 1, 1);
         const endOfMonth = new Date(year, month, 0);
 
-        const events = await AcademicCalendar.getEventsInRange(startOfMonth, endOfMonth);
+        const events = await prisma.academicCalendar.findMany({
+            where: {
+                isActive: true,
+                startDate: { lte: endOfMonth },
+                endDate: { gte: startOfMonth }
+            },
+            orderBy: [
+                { priority: 'desc' },
+                { startDate: 'asc' }
+            ]
+        });
 
         const blockedDays = [];
         const flaggedDays = [];
@@ -364,8 +317,8 @@ class CalendarService {
 
         for (const event of events) {
             const days = this.getDaysInRange(
-                Math.max(event.startDate, startOfMonth),
-                Math.min(event.endDate, endOfMonth)
+                new Date(Math.max(event.startDate.getTime(), startOfMonth.getTime())),
+                new Date(Math.min(event.endDate.getTime(), endOfMonth.getTime()))
             );
 
             if (event.leavePolicy === 'BLOCKED') {
@@ -390,9 +343,6 @@ class CalendarService {
         };
     }
 
-    /**
-     * Helper: Get array of day numbers in a date range
-     */
     static getDaysInRange(start, end) {
         const days = [];
         const current = new Date(start);
@@ -401,114 +351,6 @@ class CalendarService {
             current.setDate(current.getDate() + 1);
         }
         return days;
-    }
-
-    // ===== ARRAY OPERATIONS (MongoDB $push & $addToSet) =====
-
-    /**
-     * Push item(s) to an array field (allows duplicates)
-     * @param {ObjectId} eventId - Calendar event ID
-     * @param {String} arrayField - Field name ('affectsHostels', 'affectsCourses', 'affectsYears')
-     * @param {Any|Array} items - Item or array of items to push
-     * @returns {Object} Updated event
-     * 
-     * Usage:
-     * await pushToArray(eventId, 'affectsHostels', 'Block D')
-     * await pushToArray(eventId, 'affectsCourses', ['IT', 'CSE'])
-     */
-    static async pushToArray(eventId, arrayField, items) {
-        const pushObj = {};
-        pushObj[arrayField] = Array.isArray(items) ? { $each: items } : items;
-
-        return await AcademicCalendar.findByIdAndUpdate(
-            eventId,
-            { $push: pushObj },
-            { new: true, runValidators: true }
-        );
-    }
-
-    /**
-     * Add item(s) to array field without duplicates
-     * @param {ObjectId} eventId - Calendar event ID
-     * @param {String} arrayField - Field name ('affectsHostels', 'affectsCourses', 'affectsYears')
-     * @param {Any|Array} items - Item or array of items to add
-     * @returns {Object} Updated event
-     * 
-     * Usage:
-     * await addToSetArray(eventId, 'affectsHostels', 'Block E')
-     * await addToSetArray(eventId, 'affectsCourses', ['BIO', 'CHEM'])
-     */
-    static async addToSetArray(eventId, arrayField, items) {
-        const addToSetObj = {};
-        addToSetObj[arrayField] = Array.isArray(items) ? { $each: items } : items;
-
-        return await AcademicCalendar.findByIdAndUpdate(
-            eventId,
-            { $addToSet: addToSetObj },
-            { new: true, runValidators: true }
-        );
-    }
-
-    /**
-     * Remove item(s) from array field
-     * @param {ObjectId} eventId - Calendar event ID
-     * @param {String} arrayField - Field name
-     * @param {Any} item - Item to remove
-     * @returns {Object} Updated event
-     * 
-     * Usage:
-     * await removeFromArray(eventId, 'affectsHostels', 'Block A')
-     */
-    static async removeFromArray(eventId, arrayField, item) {
-        const pullObj = {};
-        pullObj[arrayField] = item;
-
-        return await AcademicCalendar.findByIdAndUpdate(
-            eventId,
-            { $pull: pullObj },
-            { new: true, runValidators: true }
-        );
-    }
-
-    /**
-     * Remove duplicates from array field using $setUnion
-     * @param {ObjectId} eventId - Calendar event ID
-     * @param {String} arrayField - Field name
-     * @returns {Object} Updated event
-     * 
-     * Usage:
-     * await removeDuplicates(eventId, 'affectsHostels')
-     */
-    static async removeDuplicates(eventId, arrayField) {
-        const setObj = {};
-        setObj[arrayField] = { $setUnion: [`$${arrayField}`, []] };
-
-        return await AcademicCalendar.findByIdAndUpdate(
-            eventId,
-            [{ $set: setObj }],
-            { new: true }
-        );
-    }
-
-    /**
-     * Replace entire array with new values (removes duplicates)
-     * @param {ObjectId} eventId - Calendar event ID
-     * @param {String} arrayField - Field name
-     * @param {Array} items - New array items
-     * @returns {Object} Updated event
-     * 
-     * Usage:
-     * await setArray(eventId, 'affectsHostels', ['Block A', 'Block C'])
-     */
-    static async setArray(eventId, arrayField, items) {
-        const setObj = {};
-        setObj[arrayField] = Array.isArray(items) ? [...new Set(items)] : [];
-
-        return await AcademicCalendar.findByIdAndUpdate(
-            eventId,
-            { $set: setObj },
-            { new: true, runValidators: true }
-        );
     }
 }
 

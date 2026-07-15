@@ -477,7 +477,6 @@
                     <div class="tab active" onclick="switchAnalyticsTab('risk-distribution')">Risk Distribution</div>
                     <div class="tab" onclick="switchAnalyticsTab('leave-statistics')">Leave Statistics</div>
                     <div class="tab" onclick="switchAnalyticsTab('attendance-hostel')">Attendance by Hostel</div>
-                    <div class="tab" onclick="switchAnalyticsTab('top-students')">Top Students</div>
                 </div>
 
                 <!-- Risk Distribution Tab -->
@@ -545,32 +544,6 @@
                                 </thead>
                                 <tbody id="attendanceHostelTable">
                                     <tr><td colspan="5" class="empty-state">Loading aggregation data...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Top Students Tab -->
-                <div id="top-students-tab" class="analytics-tab-content hidden">
-                    <div class="card">
-                        <h3>Top Reliable Students Leaderboard</h3>
-                        <p class="section-description">Most reliable students using $lookup, $sort, and $limit aggregation stages</p>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Rank</th>
-                                        <th>Student Name</th>
-                                        <th>Hostel</th>
-                                        <th>Return Reliability %</th>
-                                        <th>Attendance %</th>
-                                        <th>Leaves Approved</th>
-                                        <th>Late Returns</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="topStudentsTable">
-                                    <tr><td colspan="7" class="empty-state">Loading aggregation data...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1162,10 +1135,6 @@
 
         // ===== MongoDB Analytics Functions =====
 
-        function valueOrFallback(value, fallback = '-') {
-            return value ?? fallback;
-        }
-
         function formatNumber(value, decimals = 0, fallback = '0') {
             const numberValue = Number(value);
             return Number.isFinite(numberValue) ? numberValue.toFixed(decimals) : fallback;
@@ -1193,7 +1162,6 @@
             if (tabName === 'risk-distribution') loadRiskDistribution();
             if (tabName === 'leave-statistics') loadLeaveStatistics();
             if (tabName === 'attendance-hostel') loadAttendanceByHostel();
-            if (tabName === 'top-students') loadTopStudents();
         }
 
         // Load Risk Distribution Aggregation
@@ -1297,47 +1265,12 @@
             }
         }
 
-        // Load Top Reliable Students Aggregation
-        async function loadTopStudents() {
-            try {
-                const res = await api.getTopReliableStudentsAggregation(10);
-                const tbody = document.getElementById('topStudentsTable');
-
-                if (!res.success || !res.data || res.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No data available</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = res.data.map((item, index) => {
-                    const approvedLeaves = item.totalLeavesApproved ?? item.approvedLeavesCount ?? 0;
-                    const lateReturns = item.lateReturns ?? item.lateReturnsCount ?? 0;
-
-                    return `
-                    <tr>
-                        <td><strong>#${index + 1}</strong></td>
-                        <td>${valueOrFallback(item.studentName, 'N/A')}</td>
-                        <td>${valueOrFallback(item.hostelBlock, '-')}</td>
-                        <td><strong>${formatNumber(item.returnReliabilityScore, 1)}%</strong></td>
-                        <td>${formatNumber(item.attendancePercentage, 1)}%</td>
-                        <td>${approvedLeaves}</td>
-                        <td>${lateReturns}</td>
-                    </tr>
-                `;
-                }).join('');
-            } catch (error) {
-                console.error('Error loading top students:', error);
-                document.getElementById('topStudentsTable').innerHTML = 
-                    '<tr><td colspan="7" class="empty-state">Error loading data</td></tr>';
-            }
-        }
-
         // Refresh all analytics data
         async function refreshAnalyticsData() {
             utils.showToast('Refreshing analytics data...', 'info');
             await loadRiskDistribution();
             await loadLeaveStatistics();
             await loadAttendanceByHostel();
-            await loadTopStudents();
             utils.showToast('Analytics data refreshed!', 'success');
         }
 
@@ -1357,3 +1290,4 @@
     </script>
 </body>
 </html>
+ 

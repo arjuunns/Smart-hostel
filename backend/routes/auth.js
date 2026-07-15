@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const { prisma } = require('../config/db');
 const { protect } = require('../middleware/auth');
 
 // Generate JWT Token
@@ -52,31 +53,42 @@ router.post('/register', async (req, res) => {
         }
 
         // Check if user exists
-        const userExists = await User.findOne({ email });
+        const userExists = await prisma.user.findUnique({
+            where: { email: email.toLowerCase() }
+        });
         if (userExists) {
             return res.status(400).json({ success: false, message: 'User already exists with this email' });
         }
 
+        // Hash password explicitly
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
         // Create user
-        const user = await User.create({
-            name,
-            email,
-            passwordHash: password,
-            role: role || 'student',
-            hostelBlock,
-            roomNo,
-            phone,
-            parentPhone
+        const user = await prisma.user.create({
+            data: {
+                name,
+                email: email.toLowerCase(),
+                passwordHash: hashedPassword,
+                role: role || 'student',
+                hostelBlock,
+                roomNo,
+                phone,
+                parentPhone
+            }
         });
 
         // Generate token
-        const token = generateToken(user._id);
+        const token = generateToken(user.id);
+
+        // Exclude passwordHash from output
+        const { passwordHash, ...userWithoutPassword } = user;
 
         res.status(201).json({
             success: true,
             message: 'User registered successfully',
             data: {
-                user,
+                user: userWithoutPassword,
                 token
             }
         });
@@ -99,7 +111,9 @@ router.post('/login', async (req, res) => {
         }
 
         // Check for user
-        const user = await User.findOne({ email });
+        const user = await prisma.user.findUnique({
+            where: { email: email.toLowerCase() }
+        });
         if (!user) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
@@ -110,19 +124,22 @@ router.post('/login', async (req, res) => {
         }
 
         // Check password
-        const isMatch = await user.comparePassword(password);
+        const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         // Generate token
-        const token = generateToken(user._id);
+        const token = generateToken(user.id);
+
+        // Exclude passwordHash
+        const { passwordHash, ...userWithoutPassword } = user;
 
         res.json({
             success: true,
             message: 'Login successful',
             data: {
-                user,
+                user: userWithoutPassword,
                 token
             }
         });

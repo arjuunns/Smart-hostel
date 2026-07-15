@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Leave = require('../models/Leave');
-const Attendance = require('../models/Attendance');
-const AuditLog = require('../models/AuditLog');
+const { prisma } = require('../config/db');
 const { protect, authorize } = require('../middleware/auth');
 const MLPredictionService = require('../services/mlPredictionService');
 const StatsService = require('../services/statsService');
@@ -10,6 +8,11 @@ const StatsService = require('../services/statsService');
 // Helper: Mock parent notification
 const notifyParent = (action, studentName, leaveDetails) => {
     console.log(`📱 PARENT NOTIFICATION [${action}]: Student ${studentName} - ${leaveDetails}`);
+};
+
+// Helper: Generate a unique gate pass ID
+const generateGatePassId = () => {
+    return `GP-${Date.now()}-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
 };
 
 // @route   POST /api/leaves/apply
@@ -33,7 +36,7 @@ router.post('/apply', protect, authorize('student'), async (req, res) => {
 
         // Generate ML prediction
         const leaveRequest = {
-            studentId: req.user._id,
+            studentId: req.user.id,
             fromDate: from,
             toDate: to,
             leaveType: leaveType || 'REGULAR',
@@ -69,65 +72,58 @@ router.post('/apply', protect, authorize('student'), async (req, res) => {
             }
         } catch (mlError) {
             console.error('ML Prediction error:', mlError);
-            // Continue without ML prediction
         }
-
-        const leave = await Leave.create({
-            studentId: req.user._id,
-            leaveType,
-            fromDateTime: from,
-            toDateTime: to,
-            reason,
-            status: initialStatus,
-            // ML-related fields
-            riskScore: prediction?.prediction?.riskScore || null,
-            riskCategory: prediction?.prediction?.riskCategory || null,
-            predictionFactors: prediction?.prediction ? {
-                attendanceScore: prediction.features.student.attendancePercentage,
-                historyScore: prediction.featureScores?.history?.risk || 0,
-                calendarScore: prediction.features.calendar.calendarScore,
-                patternScore: prediction.featureScores?.frequency?.risk || 0
-            } : null,
-            aiDecision,
-            aiDecisionReason
-        });
 
         // Generate gate pass if auto-approved
+        let gatePassId = null;
+        let approvedAt = null;
         if (initialStatus === 'AUTO_APPROVED') {
-            leave.generateGatePass();
-            leave.approvedAt = new Date();
-            await leave.save();
-            
-            // Update student stats
-            await StatsService.updateLeaveStats(req.user._id);
+            gatePassId = generateGatePassId();
+            approvedAt = new Date();
         }
 
-        // Prepare response
-        const responseData = {
-            leave,
-            mlPrediction: prediction ? {
-                decision: prediction.prediction.decision,
-                riskScore: prediction.prediction.riskScore,
-                riskCategory: prediction.prediction.riskCategory,
-                confidence: prediction.prediction.confidence,
-                message: prediction.recommendation.suggestedResponse,
-                warnings: prediction.explanation.negativeFactors,
-                positives: prediction.explanation.positiveFactors
-            } : null
-        };
+        const leave = await prisma.leave.create({
+            data: {
+                studentId: req.user.id,
+                leaveType: leaveType || 'REGULAR',
+                fromDateTime: from,
+                toDateTime: to,
+                reason,
+                status: initialStatus,
+                gatePassId,
+                approvedAt,
+                // ML-related fields
+                riskScore: prediction?.prediction?.riskScore || null,
+                riskCategory: prediction?.prediction?.riskCategory || null,
+                attendanceScore: prediction?.features?.student?.attendancePercentage || null,
+                historyScore: prediction?.featureScores?.history?.risk || 0,
+                calendarScore: prediction?.features?.calendar?.calendarScore || null,
+                patternScore: prediction?.featureScores?.frequency?.risk || 0,
+                aiDecision,
+                aiDecisionReason
+            }
+        });
 
-        // Determine response message
-        let message = 'Leave application submitted successfully';
-        if (initialStatus === 'AUTO_APPROVED') {
-            message = '🎉 Leave auto-approved based on your excellent record!';
-        } else if (initialStatus === 'FLAGGED') {
-            message = 'Leave application submitted. Requires warden review due to calendar/history factors.';
-        }
+        // Audit log
+        await prisma.auditLog.create({
+            data: {
+                action: 'APPLY',
+                model: 'Leave',
+                documentId: leave.id.toString(),
+                performedBy: req.user.id,
+                details: `Applied for ${leaveType} leave. Status: ${initialStatus}`
+            }
+        });
+
+        // Trigger stats refresh in background
+        StatsService.refreshAllStats(req.user.id).catch(console.error);
 
         res.status(201).json({
             success: true,
-            message,
-            data: responseData
+            message: initialStatus === 'AUTO_APPROVED' 
+                ? 'Leave auto-approved by AI System!' 
+                : 'Leave application submitted successfully',
+            data: leave
         });
     } catch (error) {
         console.error('Apply leave error:', error);
@@ -140,9 +136,10 @@ router.post('/apply', protect, authorize('student'), async (req, res) => {
 // @access  Private (Student)
 router.get('/mine', protect, authorize('student'), async (req, res) => {
     try {
-        const leaves = await Leave.find({ studentId: req.user._id })
-            .sort({ createdAt: -1 })
-            .populate('approvedBy', 'name email');
+        const leaves = await prisma.leave.findMany({
+            where: { studentId: req.user.id },
+            orderBy: { createdAt: 'desc' }
+        });
 
         res.json({
             success: true,
@@ -155,56 +152,25 @@ router.get('/mine', protect, authorize('student'), async (req, res) => {
 });
 
 // @route   GET /api/leaves/pending
-// @desc    Get all pending leaves (for warden/admin) - includes FLAGGED
+// @desc    Get pending leave requests
 // @access  Private (Warden/Admin)
 router.get('/pending', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
-        const leaves = await Leave.find({ status: { $in: ['PENDING', 'FLAGGED'] } })
-            .sort({ createdAt: -1 })
-            .populate('studentId', 'name email hostelBlock roomNo phone');
-
-        // Add ML risk info to response
-        const leavesWithRisk = leaves.map(leave => ({
-            ...leave.toObject(),
-            mlInfo: {
-                riskScore: leave.riskScore,
-                riskCategory: leave.riskCategory,
-                aiDecision: leave.aiDecision,
-                aiDecisionReason: leave.aiDecisionReason,
-                predictionFactors: leave.predictionFactors
-            }
-        }));
-
-        res.json({
-            success: true,
-            count: leaves.length,
-            summary: {
-                pending: leaves.filter(l => l.status === 'PENDING').length,
-                flagged: leaves.filter(l => l.status === 'FLAGGED').length,
-                highRisk: leaves.filter(l => l.riskCategory === 'HIGH').length
+        const leaves = await prisma.leave.findMany({
+            where: {
+                status: { in: ['PENDING', 'FLAGGED'] }
             },
-            data: leavesWithRisk
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
         });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// @route   GET /api/leaves/all
-// @desc    Get all leaves (for warden/admin)
-// @access  Private (Warden/Admin)
-router.get('/all', protect, authorize('warden', 'admin'), async (req, res) => {
-    try {
-        const { status, leaveType } = req.query;
-        const filter = {};
-        
-        if (status) filter.status = status;
-        if (leaveType) filter.leaveType = leaveType;
-
-        const leaves = await Leave.find(filter)
-            .sort({ createdAt: -1 })
-            .populate('studentId', 'name email hostelBlock roomNo phone')
-            .populate('approvedBy', 'name email');
 
         res.json({
             success: true,
@@ -216,43 +182,35 @@ router.get('/all', protect, authorize('warden', 'admin'), async (req, res) => {
     }
 });
 
-// @route   GET /api/leaves/flagged
-// @desc    Get AI-flagged leaves requiring review (for warden/admin)
+// @route   GET /api/leaves/all
+// @desc    Get all leave requests (with filters)
 // @access  Private (Warden/Admin)
-router.get('/flagged', protect, authorize('warden', 'admin'), async (req, res) => {
+router.get('/all', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
-        const leaves = await Leave.find({ status: 'FLAGGED' })
-            .sort({ riskScore: -1, createdAt: -1 })
-            .populate('studentId', 'name email hostelBlock roomNo phone');
+        const { status, leaveType } = req.query;
+        const whereClause = {};
 
-        res.json({
-            success: true,
-            count: leaves.length,
-            data: leaves.map(leave => ({
-                ...leave.toObject(),
-                mlInfo: {
-                    riskScore: leave.riskScore,
-                    riskCategory: leave.riskCategory,
-                    aiDecision: leave.aiDecision,
-                    aiDecisionReason: leave.aiDecisionReason,
-                    predictionFactors: leave.predictionFactors
+        if (status) whereClause.status = status;
+        if (leaveType) whereClause.leaveType = leaveType;
+
+        const leaves = await prisma.leave.findMany({
+            where: whereClause,
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                },
+                approver: {
+                    select: {
+                        name: true
+                    }
                 }
-            }))
+            },
+            orderBy: { createdAt: 'desc' }
         });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// @route   GET /api/leaves/auto-approved
-// @desc    Get auto-approved leaves (for audit/warden/admin)
-// @access  Private (Warden/Admin)
-router.get('/auto-approved', protect, authorize('warden', 'admin'), async (req, res) => {
-    try {
-        const leaves = await Leave.find({ status: 'AUTO_APPROVED' })
-            .sort({ createdAt: -1 })
-            .populate('studentId', 'name email hostelBlock roomNo phone')
-            .limit(50);
 
         res.json({
             success: true,
@@ -265,16 +223,26 @@ router.get('/auto-approved', protect, authorize('warden', 'admin'), async (req, 
 });
 
 // @route   GET /api/leaves/emergency
-// @desc    Get emergency leaves (for warden/admin)
+// @desc    Get emergency leave requests
 // @access  Private (Warden/Admin)
 router.get('/emergency', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
-        const leaves = await Leave.find({ 
-            leaveType: 'EMERGENCY',
-            status: { $in: ['PENDING', 'FLAGGED'] }
-        })
-            .sort({ createdAt: -1 })
-            .populate('studentId', 'name email hostelBlock roomNo phone');
+        const leaves = await prisma.leave.findMany({
+            where: {
+                leaveType: 'EMERGENCY',
+                status: 'PENDING'
+            },
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
 
         res.json({
             success: true,
@@ -286,84 +254,74 @@ router.get('/emergency', protect, authorize('warden', 'admin'), async (req, res)
     }
 });
 
-// @route   PATCH /api/leaves/:id/decision
-// @desc    Approve or reject leave
+// @route   PATCH /api/leaves/:leaveId/decision
+// @desc    Approve or reject leave application
 // @access  Private (Warden/Admin)
-router.patch('/:id/decision', protect, authorize('warden', 'admin'), async (req, res) => {
+router.patch('/:leaveId/decision', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
-        const { action, remarks } = req.body;
+        const leaveId = parseInt(req.params.leaveId);
+        const { action, remarks } = req.body; // action: 'APPROVE' or 'REJECT'
 
         if (!['APPROVE', 'REJECT'].includes(action)) {
-            return res.status(400).json({ success: false, message: 'Action must be APPROVE or REJECT' });
+            return res.status(400).json({ success: false, message: 'Invalid action' });
         }
 
-        const leave = await Leave.findById(req.params.id).populate('studentId', 'name email parentPhone');
-        
-        if (!leave) {
-            return res.status(404).json({ success: false, message: 'Leave not found' });
-        }
-
-        if (leave.status !== 'PENDING' && leave.status !== 'FLAGGED') {
-            return res.status(400).json({ success: false, message: 'Leave is already processed' });
-        }
-
-        // Update leave
-        leave.status = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
-        leave.approvedBy = req.user._id;
-        leave.approvedAt = new Date();
-        leave.remarks = remarks;
-
-        // Generate gate pass if approved
-        if (action === 'APPROVE') {
-            leave.generateGatePass();
-            
-            // Auto-mark attendance as ON_LEAVE for leave dates
-            const startDate = new Date(leave.fromDateTime);
-            startDate.setHours(0, 0, 0, 0);
-            const endDate = new Date(leave.toDateTime);
-            endDate.setHours(0, 0, 0, 0);
-
-            const currentDate = new Date(startDate);
-            while (currentDate <= endDate) {
-                await Attendance.findOneAndUpdate(
-                    { studentId: leave.studentId._id, date: new Date(currentDate) },
-                    { 
-                        studentId: leave.studentId._id,
-                        date: new Date(currentDate),
-                        status: 'ON_LEAVE',
-                        markedBy: req.user._id
-                    },
-                    { upsert: true, new: true }
-                );
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
-        }
-
-        await leave.save();
-
-        // Update student stats after decision
-        await StatsService.updateLeaveStats(leave.studentId._id);
-
-        // Create audit log
-        await AuditLog.create({
-            action: `LEAVE_${action}`,
-            performedBy: req.user._id,
-            targetType: 'Leave',
-            targetId: leave._id,
-            details: { remarks, gatePassId: leave.gatePassId }
+        const leave = await prisma.leave.findUnique({
+            where: { id: leaveId },
+            include: { student: true }
         });
 
-        // Mock parent notification
+        if (!leave) {
+            return res.status(404).json({ success: false, message: 'Leave request not found' });
+        }
+
+        if (!['PENDING', 'FLAGGED'].includes(leave.status)) {
+            return res.status(400).json({ success: false, message: 'Decision already made on this leave request' });
+        }
+
+        const finalStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+        
+        let gatePassId = leave.gatePassId;
+        if (action === 'APPROVE' && !gatePassId) {
+            gatePassId = generateGatePassId();
+        }
+
+        const updatedLeave = await prisma.leave.update({
+            where: { id: leaveId },
+            data: {
+                status: finalStatus,
+                remarks,
+                gatePassId,
+                approvedBy: req.user.id,
+                approvedAt: new Date()
+            }
+        });
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                action,
+                model: 'Leave',
+                documentId: leaveId.toString(),
+                performedBy: req.user.id,
+                details: `Leave ${finalStatus.toLowerCase()}. Remarks: ${remarks || 'None'}`
+            }
+        });
+
+        // Refresh stats
+        StatsService.refreshAllStats(leave.studentId).catch(console.error);
+
+        // Notify parents
         notifyParent(
-            action === 'APPROVE' ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
-            leave.studentId.name,
-            `From: ${leave.fromDateTime} To: ${leave.toDateTime}. Remarks: ${remarks || 'None'}`
+            action,
+            leave.student.name,
+            `${leave.leaveType} leave from ${leave.fromDateTime.toDateString()} to ${leave.toDateTime.toDateString()}`
         );
 
         res.json({
             success: true,
-            message: `Leave ${action === 'APPROVE' ? 'approved' : 'rejected'} successfully`,
-            data: leave
+            message: `Leave request has been ${finalStatus.toLowerCase()}`,
+            data: updatedLeave
         });
     } catch (error) {
         console.error('Decision error:', error);
@@ -372,46 +330,120 @@ router.patch('/:id/decision', protect, authorize('warden', 'admin'), async (req,
 });
 
 // @route   GET /api/leaves/overstay
-// @desc    Get overstayed students
-// @access  Private (Warden/Admin/Guard)
-router.get('/overstay', protect, authorize('warden', 'admin', 'guard'), async (req, res) => {
+// @desc    Get list of overstayed students
+// @access  Private (Warden/Admin)
+router.get('/overstay', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
         const now = new Date();
-        
-        const overstayedLeaves = await Leave.find({
-            status: 'APPROVED',
-            currentStatus: 'OUT',
-            toDateTime: { $lt: now }
-        })
-            .populate('studentId', 'name email hostelBlock roomNo phone parentPhone')
-            .sort({ toDateTime: 1 });
+        const overstayed = await prisma.leave.findMany({
+            where: {
+                status: 'APPROVED',
+                currentStatus: 'OUT',
+                toDateTime: { lt: now }
+            },
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        hostelBlock: true,
+                        roomNo: true,
+                        phone: true
+                    }
+                }
+            },
+            orderBy: { toDateTime: 'asc' }
+        });
 
         res.json({
             success: true,
-            count: overstayedLeaves.length,
-            data: overstayedLeaves
+            count: overstayed.length,
+            data: overstayed
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// @route   GET /api/leaves/:id
-// @desc    Get single leave by ID
-// @access  Private
-router.get('/:id', protect, async (req, res) => {
+// @route   GET /api/leaves/flagged
+// @desc    Get AI flagged leaves
+// @access  Private (Warden/Admin)
+router.get('/flagged', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
-        const leave = await Leave.findById(req.params.id)
-            .populate('studentId', 'name email hostelBlock roomNo phone')
-            .populate('approvedBy', 'name email');
+        const flagged = await prisma.leave.findMany({
+            where: { status: 'FLAGGED' },
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json({
+            success: true,
+            count: flagged.length,
+            data: flagged
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// @route   GET /api/leaves/auto-approved
+// @desc    Get auto-approved leaves count for today
+// @access  Private (Warden/Admin)
+router.get('/auto-approved', protect, authorize('warden', 'admin'), async (req, res) => {
+    try {
+        const todayStart = new Date();
+        todayStart.setHours(0,0,0,0);
+        
+        const count = await prisma.leave.count({
+            where: {
+                status: 'AUTO_APPROVED',
+                approvedAt: { gte: todayStart }
+            }
+        });
+
+        res.json({
+            success: true,
+            count
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// @route   GET /api/leaves/:leaveId
+// @desc    Get details of a specific leave request
+// @access  Private
+router.get('/:leaveId', protect, async (req, res) => {
+    try {
+        const leaveId = parseInt(req.params.leaveId);
+        const leave = await prisma.leave.findUnique({
+            where: { id: leaveId },
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        email: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                }
+            }
+        });
 
         if (!leave) {
-            return res.status(404).json({ success: false, message: 'Leave not found' });
+            return res.status(404).json({ success: false, message: 'Leave request not found' });
         }
 
-        // Students can only view their own leaves
-        if (req.user.role === 'student' && leave.studentId._id.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ success: false, message: 'Not authorized to view this leave' });
+        // Limit access to student owner or warden/admin
+        if (req.user.role === 'student' && leave.studentId !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
         }
 
         res.json({

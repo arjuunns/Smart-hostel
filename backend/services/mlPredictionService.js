@@ -1,7 +1,6 @@
 const StatsService = require('./statsService');
 const CalendarService = require('./calendarService');
-const StudentStats = require('../models/StudentStats');
-const Leave = require('../models/Leave');
+const { prisma } = require('../config/db');
 
 /**
  * MLPredictionService - Machine Learning-based Leave Approval Prediction
@@ -116,10 +115,10 @@ class MLPredictionService {
      */
     static async extractFeatures(studentId, fromDate, toDate, leaveType, reason, studentInfo) {
         // Get student stats
-        let stats = await StudentStats.findOne({ studentId });
+        let stats = await prisma.studentStats.findUnique({ where: { studentId: parseInt(studentId) } });
         if (!stats) {
-            await StatsService.initializeStats(studentId);
-            stats = await StudentStats.findOne({ studentId });
+            await StatsService.initializeStats(parseInt(studentId));
+            stats = await prisma.studentStats.findUnique({ where: { studentId: parseInt(studentId) } });
         }
 
         // Get calendar analysis
@@ -136,10 +135,13 @@ class MLPredictionService {
         const isWeekendLeave = leaveDayOfWeek === 5 || leaveDayOfWeek === 6; // Fri or Sat start
 
         // Get recent leave pattern
-        const recentLeaves = await Leave.find({
-            studentId,
-            createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
-        }).sort({ createdAt: -1 });
+        const recentLeaves = await prisma.leave.findMany({
+            where: {
+                studentId: parseInt(studentId),
+                createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
 
         return {
             // Student profile
@@ -583,9 +585,11 @@ class MLPredictionService {
         };
 
         // Get historical leaves
-        const leaves = await Leave.find({ studentId })
-            .sort({ createdAt: -1 })
-            .limit(20);
+        const leaves = await prisma.leave.findMany({
+            where: { studentId: parseInt(studentId) },
+            orderBy: { createdAt: 'desc' },
+            take: 20
+        });
 
         if (leaves.length < 2) {
             return patterns;
@@ -678,14 +682,14 @@ class MLPredictionService {
             try {
                 const prediction = await this.predictLeaveApproval(request);
                 results.push({
-                    leaveId: request._id,
+                    leaveId: request.id,
                     studentId: request.studentId,
                     prediction: prediction.prediction,
                     recommendation: prediction.recommendation.action
                 });
             } catch (error) {
                 results.push({
-                    leaveId: request._id,
+                    leaveId: request.id,
                     error: error.message
                 });
             }

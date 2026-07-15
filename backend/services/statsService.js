@@ -1,6 +1,4 @@
-const StudentStats = require('../models/StudentStats');
-const Attendance = require('../models/Attendance');
-const Leave = require('../models/Leave');
+const { prisma } = require('../config/db');
 
 /**
  * StatsService - Handles all student statistics calculations for ML predictions
@@ -15,31 +13,26 @@ const Leave = require('../models/Leave');
 class StatsService {
 
     // ===== INITIALIZATION =====
-
-    /**
-     * Initialize stats for a new student
-     * @param {ObjectId} studentId 
-     * @returns {StudentStats}
-     */
     static async initializeStats(studentId) {
-        const existing = await StudentStats.findOne({ studentId });
+        const existing = await prisma.studentStats.findUnique({
+            where: { studentId: parseInt(studentId) }
+        });
         if (!existing) {
-            return await StudentStats.create({ studentId });
+            return await prisma.studentStats.create({
+                data: { studentId: parseInt(studentId) }
+            });
         }
         return existing;
     }
 
     // ===== ATTENDANCE STATS =====
-
-    /**
-     * Update attendance statistics for a student
-     * @param {ObjectId} studentId 
-     * @returns {Object} Updated risk assessment
-     */
     static async updateAttendanceStats(studentId) {
-        await this.initializeStats(studentId);
+        const sid = parseInt(studentId);
+        await this.initializeStats(sid);
 
-        const attendance = await Attendance.find({ studentId });
+        const attendance = await prisma.attendance.findMany({
+            where: { studentId: sid }
+        });
 
         const totalDays = attendance.length;
         const presentDays = attendance.filter(a => a.status === 'PRESENT').length;
@@ -52,9 +45,9 @@ class StatsService {
             ? Math.round((presentDays / totalDays) * 100)
             : 100;
 
-        await StudentStats.findOneAndUpdate(
-            { studentId },
-            {
+        await prisma.studentStats.update({
+            where: { studentId: sid },
+            data: {
                 totalDays,
                 presentDays,
                 absentDays,
@@ -64,24 +57,20 @@ class StatsService {
                 attendancePercentage,
                 lastUpdated: new Date()
             }
-        );
+        });
 
-        return await this.calculateOverallRisk(studentId);
+        return await this.calculateOverallRisk(sid);
     }
 
     // ===== LEAVE STATS =====
-
-    /**
-     * Update leave statistics for a student
-     * @param {ObjectId} studentId 
-     * @returns {Object} Updated risk assessment
-     */
     static async updateLeaveStats(studentId) {
-        await this.initializeStats(studentId);
+        const sid = parseInt(studentId);
+        await this.initializeStats(sid);
 
-        const leaves = await Leave.find({ studentId });
+        const leaves = await prisma.leave.findMany({
+            where: { studentId: sid }
+        });
 
-        // Basic counts
         const totalLeavesApplied = leaves.length;
         const totalLeavesApproved = leaves.filter(l =>
             ['APPROVED', 'AUTO_APPROVED'].includes(l.status)
@@ -90,7 +79,6 @@ class StatsService {
         const totalLeavesAutoApproved = leaves.filter(l => l.status === 'AUTO_APPROVED').length;
         const totalLeavesFlagged = leaves.filter(l => l.status === 'FLAGGED').length;
 
-        // Calculate total leave days
         const approvedLeaves = leaves.filter(l =>
             ['APPROVED', 'AUTO_APPROVED'].includes(l.status)
         );
@@ -99,7 +87,6 @@ class StatsService {
             return sum + Math.max(1, days);
         }, 0);
 
-        // Return reliability
         const completedLeaves = leaves.filter(l => l.returnedOnTime !== null);
         const onTimeReturns = completedLeaves.filter(l => l.returnedOnTime).length;
         const lateReturns = completedLeaves.filter(l => !l.returnedOnTime).length;
@@ -108,12 +95,10 @@ class StatsService {
             ? Math.round((onTimeReturns / completedLeaves.length) * 100)
             : 100;
 
-        // Pattern analysis
         const avgLeaveDuration = approvedLeaves.length > 0
             ? Math.round((totalLeaveDaysTaken / approvedLeaves.length) * 10) / 10
             : 0;
 
-        // Calculate average frequency (days between leave requests)
         let avgLeaveFrequency = 0;
         if (leaves.length >= 2) {
             const sortedLeaves = leaves.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -125,7 +110,6 @@ class StatsService {
             avgLeaveFrequency = Math.round(totalGaps / (sortedLeaves.length - 1));
         }
 
-        // Find most frequent leave type
         const leaveTypeCounts = {};
         leaves.forEach(l => {
             leaveTypeCounts[l.leaveType] = (leaveTypeCounts[l.leaveType] || 0) + 1;
@@ -136,7 +120,6 @@ class StatsService {
             )
             : null;
 
-        // Recent activity
         const now = new Date();
         const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const semesterStart = new Date(now.getFullYear(), now.getMonth() < 6 ? 0 : 6, 1);
@@ -144,11 +127,9 @@ class StatsService {
         const leavesThisMonth = leaves.filter(l => new Date(l.createdAt) >= thisMonthStart).length;
         const leavesThisSemester = leaves.filter(l => new Date(l.createdAt) >= semesterStart).length;
 
-        const lastLeave = leaves.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-
-        await StudentStats.findOneAndUpdate(
-            { studentId },
-            {
+        await prisma.studentStats.update({
+            where: { studentId: sid },
+            data: {
                 totalLeavesApplied,
                 totalLeavesApproved,
                 totalLeavesRejected,
@@ -164,144 +145,96 @@ class StatsService {
                 frequentLeaveType,
                 leavesThisMonth,
                 leavesThisSemester,
-                lastLeaveDate: lastLeave?.createdAt || null,
                 lastUpdated: new Date()
             }
-        );
+        });
 
-        return await this.calculateOverallRisk(studentId);
+        return await this.calculateOverallRisk(sid);
     }
 
-    // ===== RISK CALCULATION =====
-
-    /**
-     * Calculate overall risk score based on all factors
-     * @param {ObjectId} studentId 
-     * @returns {Object} { riskScore, riskCategory, componentScores }
-     */
+    // ===== OVERALL RISK SCORE CALCULATION =====
     static async calculateOverallRisk(studentId) {
-        const stats = await StudentStats.findOne({ studentId });
-        if (!stats) return null;
+        const sid = parseInt(studentId);
+        const stats = await prisma.studentStats.findUnique({
+            where: { studentId: sid }
+        });
+        if (!stats) return { riskScore: 0, riskCategory: 'LOW' };
 
-        // Calculate component scores (0-100, higher = more risky)
+        // 1. Attendance Score (0-100, higher = worse attendance)
+        const attendanceScore = Math.max(0, 100 - stats.attendancePercentage);
 
-        // 1. Attendance Score (30% weight)
-        const attendanceRisk = Math.max(0, 100 - stats.attendancePercentage);
+        // 2. Return Reliability Score (0-100, higher = worse reliability)
+        const historyScore = Math.max(0, 100 - stats.returnReliabilityScore);
 
-        // 2. Return Reliability Score (25% weight)
-        const reliabilityRisk = Math.max(0, 100 - stats.returnReliabilityScore);
+        // 3. Curfew Score (curfew violations)
+        const curfewScore = Math.min(100, stats.curfewViolations * 20);
 
-        // 3. Curfew Violations Score (20% weight)
-        // Each violation adds 15 points, max 100
-        const violationsRisk = Math.min(100, stats.curfewViolations * 15);
+        // 4. Leave Frequency Score (leaves this month)
+        const frequencyScore = Math.min(100, stats.leavesThisMonth * 25);
 
-        // 4. Leave Frequency Score (15% weight)
-        // More than 5 leave requests per month = high risk
-        const frequencyRisk = Math.min(100, stats.leavesThisMonth * 20);
+        // 5. Late Return Severity Score (late hours)
+        const lateReturnScore = Math.min(100, stats.totalLateReturnHours * 10);
 
-        // 5. Late Returns Score (10% weight)
-        // Each late return adds 20 points, max 100
-        const historyRisk = Math.min(100, stats.lateReturns * 20);
-
-        // Calculate weighted risk score
-        let riskScore = (
-            attendanceRisk * 0.30 +
-            reliabilityRisk * 0.25 +
-            violationsRisk * 0.20 +
-            frequencyRisk * 0.15 +
-            historyRisk * 0.10
+        // Combined Risk Score
+        const overallRiskScore = Math.round(
+            attendanceScore * 0.30 +
+            historyScore * 0.25 +
+            curfewScore * 0.20 +
+            frequencyScore * 0.15 +
+            lateReturnScore * 0.10
         );
 
-        riskScore = Math.round(riskScore);
-
-        // Determine risk category
         let riskCategory = 'LOW';
-        if (riskScore >= 60) riskCategory = 'HIGH';
-        else if (riskScore >= 30) riskCategory = 'MEDIUM';
+        if (overallRiskScore >= 60) riskCategory = 'HIGH';
+        else if (overallRiskScore >= 30) riskCategory = 'MEDIUM';
 
-        const componentScores = {
-            attendance: Math.round(attendanceRisk),
-            reliability: Math.round(reliabilityRisk),
-            violations: Math.round(violationsRisk),
-            frequency: Math.round(frequencyRisk),
-            history: Math.round(historyRisk)
-        };
-
-        await StudentStats.findOneAndUpdate(
-            { studentId },
-            {
-                overallRiskScore: riskScore,
+        await prisma.studentStats.update({
+            where: { studentId: sid },
+            data: {
+                overallRiskScore,
                 riskCategory,
-                componentScores,
                 lastUpdated: new Date()
             }
-        );
+        });
 
-        return { riskScore, riskCategory, componentScores };
+        return { riskScore: overallRiskScore, riskCategory };
     }
 
-    // ===== FULL REFRESH =====
-
-    /**
-     * Refresh all stats for a student
-     * @param {ObjectId} studentId 
-     * @returns {StudentStats}
-     */
-    static async refreshAllStats(studentId) {
-        await this.updateAttendanceStats(studentId);
-        await this.updateLeaveStats(studentId);
-        return await StudentStats.findOne({ studentId });
-    }
-
-    // ===== GETTERS =====
-
-    /**
-     * Get stats for a student
-     * @param {ObjectId} studentId 
-     * @returns {StudentStats}
-     */
+    // ===== ACCESSORS =====
     static async getStats(studentId) {
-        return await StudentStats.findOne({ studentId });
+        return await prisma.studentStats.findUnique({
+            where: { studentId: parseInt(studentId) }
+        });
     }
 
-    /**
-     * Get all high-risk students
-     * @returns {Array<StudentStats>}
-     */
+    static async refreshAllStats(studentId) {
+        const sid = parseInt(studentId);
+        await this.updateAttendanceStats(sid);
+        return await this.updateLeaveStats(sid);
+    }
+
     static async getHighRiskStudents() {
-        return await StudentStats.find({ riskCategory: 'HIGH' })
-            .populate('studentId', 'name email hostelBlock roomNo phone')
-            .sort({ overallRiskScore: -1 });
+        return await prisma.studentStats.findMany({
+            where: { riskCategory: 'HIGH' },
+            include: { student: true }
+        });
     }
 
-    /**
-     * Get risk distribution summary
-     * @returns {Object}
-     */
     static async getRiskDistribution() {
-        const low = await StudentStats.countDocuments({ riskCategory: 'LOW' });
-        const medium = await StudentStats.countDocuments({ riskCategory: 'MEDIUM' });
-        const high = await StudentStats.countDocuments({ riskCategory: 'HIGH' });
-        const total = low + medium + high;
-
-        return {
-            total,
-            distribution: {
-                low: { count: low, percentage: total > 0 ? Math.round((low / total) * 100) : 0 },
-                medium: { count: medium, percentage: total > 0 ? Math.round((medium / total) * 100) : 0 },
-                high: { count: high, percentage: total > 0 ? Math.round((high / total) * 100) : 0 }
-            }
-        };
+        const stats = await prisma.studentStats.findMany();
+        const dist = { LOW: 0, MEDIUM: 0, HIGH: 0 };
+        stats.forEach(s => {
+            dist[s.riskCategory] = (dist[s.riskCategory] || 0) + 1;
+        });
+        return dist;
     }
 
-    // ===== BATCH OPERATIONS =====
-
-    /**
-     * Update stats for all students (run as cron job)
-     */
     static async updateAllStudentStats() {
-        const Leave = require('../models/Leave');
-        const studentIds = await Leave.distinct('studentId');
+        const leaves = await prisma.leave.findMany({
+            distinct: ['studentId'],
+            select: { studentId: true }
+        });
+        const studentIds = leaves.map(l => l.studentId);
 
         const results = {
             processed: 0,
@@ -321,53 +254,33 @@ class StatsService {
     }
 
     // ===== LEAVE REQUEST RISK CALCULATION =====
-
-    /**
-     * Calculate risk score for a specific leave request
-     * Combines student stats with calendar analysis
-     * @param {ObjectId} studentId 
-     * @param {Date} fromDate 
-     * @param {Date} toDate 
-     * @param {Object} student - Student info (hostelBlock, course, year)
-     * @returns {Object} Complete risk assessment
-     */
     static async calculateLeaveRequestRisk(studentId, fromDate, toDate, student = {}) {
         const CalendarService = require('./calendarService');
+        const sid = parseInt(studentId);
         
-        // Get or initialize student stats
-        let stats = await this.getStats(studentId);
+        let stats = await this.getStats(sid);
         if (!stats) {
-            stats = await this.initializeStats(studentId);
-            await this.refreshAllStats(studentId);
-            stats = await this.getStats(studentId);
+            stats = await this.initializeStats(sid);
+            await this.refreshAllStats(sid);
+            stats = await this.getStats(sid);
         }
 
-        // Get calendar analysis
         const calendarAnalysis = await CalendarService.analyzeLeaveDates(fromDate, toDate, student);
-
-        // Base risk from student history
         const baseRiskScore = stats?.overallRiskScore || 0;
-
-        // Calendar risk score (0-100)
         const calendarScore = calendarAnalysis.calendarScore;
 
-        // Combined risk calculation
-        // Weights: Student history 60%, Calendar 40%
         let combinedRiskScore = Math.round(
             baseRiskScore * 0.60 + 
             calendarScore * 0.40 +
-            calendarAnalysis.riskModifier  // Calendar can add/subtract -50 to +50
+            calendarAnalysis.riskModifier
         );
 
-        // Clamp between 0-100
         combinedRiskScore = Math.max(0, Math.min(100, combinedRiskScore));
 
-        // Determine risk category
         let riskCategory = 'LOW';
         if (combinedRiskScore >= 60) riskCategory = 'HIGH';
         else if (combinedRiskScore >= 30) riskCategory = 'MEDIUM';
 
-        // Determine AI decision
         let aiDecision = 'MANUAL';
         let aiDecisionReason = '';
 
@@ -383,32 +296,17 @@ class StatsService {
         }
 
         return {
-            // Risk scores
             riskScore: combinedRiskScore,
             riskCategory,
-            
-            // Component breakdown
             predictionFactors: {
-                attendanceScore: stats?.componentScores?.attendance || 0,
-                historyScore: stats?.componentScores?.history || 0,
+                attendanceScore: 100 - (stats?.attendancePercentage || 100),
+                historyScore: 100 - (stats?.returnReliabilityScore || 100),
                 calendarScore: calendarScore,
-                patternScore: stats?.componentScores?.frequency || 0
+                patternScore: stats?.overallRiskScore || 0
             },
-            
-            // AI decision
             aiDecision,
             aiDecisionReason,
-            
-            // Calendar details
-            calendarAnalysis: {
-                canApply: calendarAnalysis.canApply,
-                warnings: calendarAnalysis.warnings,
-                overlappingEvents: calendarAnalysis.overlappingEvents,
-                blockedDates: calendarAnalysis.blockedDates,
-                riskModifier: calendarAnalysis.riskModifier
-            },
-            
-            // Student profile summary
+            calendarAnalysis,
             studentProfile: {
                 attendancePercentage: stats?.attendancePercentage || 100,
                 returnReliabilityScore: stats?.returnReliabilityScore || 100,
@@ -417,57 +315,26 @@ class StatsService {
                 lateReturns: stats?.lateReturns || 0,
                 overallRiskCategory: stats?.riskCategory || 'LOW'
             },
-            
-            // Recommendation for warden
             recommendation: calendarAnalysis.canApply 
                 ? (aiDecision === 'AUTO_APPROVED' ? 'APPROVE' : aiDecision === 'FLAGGED' ? 'REVIEW' : 'APPROVE')
                 : 'REJECT'
         };
     }
 
-    // ===== MONGODB AGGREGATION PIPELINES =====
-
-    /**
-     * Get risk distribution across all students using MongoDB aggregation
-     * Groups students by risk category and counts them
-     * Demonstrates: $group, $sort, $project
-     * @returns {Array} Risk distribution with student counts per category
-     */
+    // ===== SQL ANALYTICS PORT =====
     static async getRiskDistributionAggregated() {
         try {
-            const distribution = await StudentStats.aggregate([
-                // Stage 1: Match only students with calculated risk scores
-                { $match: { riskCategory: { $exists: true } } },
-                
-                // Stage 2: Group by risk category and count
-                {
-                    $group: {
-                        _id: '$riskCategory',
-                        count: { $sum: 1 },
-                        avgRiskScore: { $avg: '$overallRiskScore' },
-                        maxRiskScore: { $max: '$overallRiskScore' },
-                        minRiskScore: { $min: '$overallRiskScore' }
-                    }
-                },
-                
-                // Stage 3: Sort by risk level (descending)
-                { $sort: { _id: -1 } },
-                
-                // Stage 4: Project final output with defaults for undefined fields
-                {
-                    $project: {
-                        _id: 0,
-                        riskCategory: { $ifNull: ['$_id', 'UNCLASSIFIED'] },
-                        studentCount: { $ifNull: ['$count', 0] },
-                        averageRiskScore: { 
-                            $round: [{ $ifNull: ['$avgRiskScore', 0] }, 2] 
-                        },
-                        maxRiskScore: { $ifNull: ['$maxRiskScore', 0] },
-                        minRiskScore: { $ifNull: ['$minRiskScore', 0] }
-                    }
-                }
-            ]);
-
+            const distribution = await prisma.$queryRaw`
+                SELECT 
+                    "riskCategory" AS "riskCategory",
+                    COUNT(*)::int AS "studentCount",
+                    ROUND(AVG("overallRiskScore")::numeric, 2)::float AS "averageRiskScore",
+                    MIN("overallRiskScore")::float AS "minRiskScore",
+                    MAX("overallRiskScore")::float AS "maxRiskScore"
+                FROM student_stats
+                GROUP BY "riskCategory"
+                ORDER BY "riskCategory" DESC
+            `;
             return distribution;
         } catch (error) {
             console.error('Error in getRiskDistributionAggregated:', error);
@@ -475,67 +342,19 @@ class StatsService {
         }
     }
 
-    /**
-     * Get comprehensive leave statistics using MongoDB aggregation
-     * Groups leave data by type and status to show summary
-     * Demonstrates: $match, $group, $sort, $project
-     * @returns {Array} Leave statistics grouped by type and status
-     */
     static async getLeaveStatisticsAggregated() {
         try {
-            const Leave = require('../models/Leave');
-            
-            const statistics = await Leave.aggregate([
-                // Stage 1: Match all leaves
-                { $match: {} },
-                
-                // Stage 2: Group by type and status
-                {
-                    $group: {
-                        _id: {
-                            leaveType: '$leaveType',
-                            status: '$status'
-                        },
-                        count: { $sum: 1 },
-                        avgDuration: {
-                            $avg: {
-                                $divide: [
-                                    { $subtract: ['$toDateTime', '$fromDateTime'] },
-                                    86400000 // milliseconds in a day
-                                ]
-                            }
-                        },
-                        totalDays: {
-                            $sum: {
-                                $divide: [
-                                    { $subtract: ['$toDateTime', '$fromDateTime'] },
-                                    86400000
-                                ]
-                            }
-                        }
-                    }
-                },
-                
-                // Stage 3: Sort by leave type and status
-                { $sort: { '_id.leaveType': 1, '_id.status': 1 } },
-                
-                // Stage 4: Project final output with defaults for undefined fields
-                {
-                    $project: {
-                        _id: 0,
-                        leaveType: { $ifNull: ['$_id.leaveType', 'UNKNOWN'] },
-                        status: { $ifNull: ['$_id.status', 'PENDING'] },
-                        totalRequests: { $ifNull: ['$count', 0] },
-                        averageDurationDays: { 
-                            $round: [{ $ifNull: ['$avgDuration', 0] }, 1] 
-                        },
-                        totalDaysCovered: { 
-                            $round: [{ $ifNull: ['$totalDays', 0] }, 1] 
-                        }
-                    }
-                }
-            ]);
-
+            const statistics = await prisma.$queryRaw`
+                SELECT 
+                    "leaveType" AS "leaveType",
+                    "status" AS "status",
+                    COUNT(*)::int AS "totalRequests",
+                    ROUND(AVG(EXTRACT(EPOCH FROM ("toDateTime" - "fromDateTime")) / 86400)::numeric, 1)::float AS "averageDurationDays",
+                    ROUND(SUM(EXTRACT(EPOCH FROM ("toDateTime" - "fromDateTime")) / 86400)::numeric, 1)::float AS "totalDaysCovered"
+                FROM leaves
+                GROUP BY "leaveType", "status"
+                ORDER BY "leaveType" ASC, "status" ASC
+            `;
             return statistics;
         } catch (error) {
             console.error('Error in getLeaveStatisticsAggregated:', error);
@@ -543,78 +362,23 @@ class StatsService {
         }
     }
 
-    /**
-     * Get attendance summary by hostel using MongoDB aggregation with $lookup
-     * Joins StudentStats with User collection to group by hostel
-     * Demonstrates: $lookup, $group, $sort, $project
-     * @returns {Array} Attendance metrics per hostel
-     */
     static async getAttendanceSummaryByHostelAggregated() {
         try {
-            const summary = await StudentStats.aggregate([
-                // Stage 1: Lookup user details to get hostel information
-                {
-                    $lookup: {
-                        from: 'users',
-                        localField: 'studentId',
-                        foreignField: '_id',
-                        as: 'studentDetails'
-                    }
-                },
-                
-                // Stage 2: Unwind the joined array
-                { $unwind: { path: '$studentDetails', preserveNullAndEmptyArrays: true } },
-                
-                // Stage 3: Match only students with hostel information
-                { $match: { 'studentDetails.hostelBlock': { $exists: true, $ne: null } } },
-                
-                // Stage 4: Group by hostel block
-                {
-                    $group: {
-                        _id: '$studentDetails.hostelBlock',
-                        totalStudents: { $sum: 1 },
-                        avgAttendance: { $avg: '$attendancePercentage' },
-                        avgRiskScore: { $avg: '$overallRiskScore' },
-                        highRiskStudents: {
-                            $sum: {
-                                $cond: [{ $gt: ['$overallRiskScore', 60] }, 1, 0]
-                            }
-                        },
-                        mediumRiskStudents: {
-                            $sum: {
-                                $cond: [{ $and: [{ $gte: ['$overallRiskScore', 30] }, { $lte: ['$overallRiskScore', 60] }] }, 1, 0]
-                            }
-                        },
-                        lowRiskStudents: {
-                            $sum: {
-                                $cond: [{ $lt: ['$overallRiskScore', 30] }, 1, 0]
-                            }
-                        }
-                    }
-                },
-                
-                // Stage 5: Sort by hostel name
-                { $sort: { _id: 1 } },
-                
-                // Stage 6: Project final output with defaults for undefined fields
-                {
-                    $project: {
-                        _id: 0,
-                        hostelBlock: { $ifNull: ['$_id', 'UNKNOWN'] },
-                        totalStudents: { $ifNull: ['$totalStudents', 0] },
-                        averageAttendancePercentage: { 
-                            $round: [{ $ifNull: ['$avgAttendance', 100] }, 2] 
-                        },
-                        averageRiskScore: { 
-                            $round: [{ $ifNull: ['$avgRiskScore', 0] }, 2] 
-                        },
-                        highRiskStudents: { $ifNull: ['$highRiskStudents', 0] },
-                        mediumRiskStudents: { $ifNull: ['$mediumRiskStudents', 0] },
-                        lowRiskStudents: { $ifNull: ['$lowRiskStudents', 0] }
-                    }
-                }
-            ]);
-
+            const summary = await prisma.$queryRaw`
+                SELECT 
+                    u."hostelBlock" AS "hostelBlock",
+                    COUNT(s.id)::int AS "totalStudents",
+                    ROUND(AVG(s."attendancePercentage")::numeric, 2)::float AS "averageAttendancePercentage",
+                    ROUND(AVG(s."overallRiskScore")::numeric, 2)::float AS "averageRiskScore",
+                    SUM(CASE WHEN s."overallRiskScore" > 60 THEN 1 ELSE 0 END)::int AS "highRiskStudents",
+                    SUM(CASE WHEN s."overallRiskScore" >= 30 AND s."overallRiskScore" <= 60 THEN 1 ELSE 0 END)::int AS "mediumRiskStudents",
+                    SUM(CASE WHEN s."overallRiskScore" < 30 THEN 1 ELSE 0 END)::int AS "lowRiskStudents"
+                FROM student_stats s
+                JOIN users u ON s."studentId" = u.id
+                WHERE u."hostelBlock" IS NOT NULL
+                GROUP BY u."hostelBlock"
+                ORDER BY u."hostelBlock" ASC
+            `;
             return summary;
         } catch (error) {
             console.error('Error in getAttendanceSummaryByHostelAggregated:', error);
@@ -622,55 +386,32 @@ class StatsService {
         }
     }
 
-    /**
-     * Get top reliable students (leaderboard) using aggregation
-     * Demonstrates: $sort, $limit, $lookup, $project
-     * @param {Number} limit - Number of top students to return
-     * @returns {Array} Top students sorted by return reliability
-     */
     static async getTopReliableStudentsAggregated(limit = 10) {
         try {
-            const topStudents = await StudentStats.aggregate([
-                // Stage 1: Lookup student details
-                {
-                    $lookup: {
-                        from: 'users',
-                        localField: 'studentId',
-                        foreignField: '_id',
-                        as: 'student'
-                    }
+            const topStudents = await prisma.studentStats.findMany({
+                where: {
+                    totalLeavesApproved: { gt: 0 }
                 },
-                
-                // Stage 2: Unwind
-                { $unwind: '$student' },
-                
-                // Stage 3: Filter students with approved leaves
-                { $match: { totalLeavesApproved: { $gt: 0 } } },
-                
-                // Stage 4: Sort by return reliability (descending)
-                { $sort: { returnReliabilityScore: -1, attendancePercentage: -1 } },
-                
-                // Stage 5: Limit results
-                { $limit: limit },
-                
-                // Stage 6: Project clean output
-                {
-                    $project: {
-                        _id: 0,
-                        rank: { $meta: 'documentInternalId' },
-                        studentName: '$student.name',
-                        studentId: '$studentId',
-                        hostelBlock: '$student.hostelBlock',
-                        returnReliabilityScore: 1,
-                        attendancePercentage: 1,
-                        totalLeavesApproved: 1,
-                        lateReturns: 1,
-                        totalLateReturnHours: 1
-                    }
-                }
-            ]);
+                include: {
+                    student: true
+                },
+                orderBy: [
+                    { returnReliabilityScore: 'desc' },
+                    { attendancePercentage: 'desc' }
+                ],
+                take: limit
+            });
 
-            return topStudents;
+            return topStudents.map(item => ({
+                studentName: item.student.name,
+                studentId: item.studentId,
+                hostelBlock: item.student.hostelBlock,
+                returnReliabilityScore: item.returnReliabilityScore,
+                attendancePercentage: item.attendancePercentage,
+                totalLeavesApproved: item.totalLeavesApproved,
+                lateReturns: item.lateReturns,
+                totalLateReturnHours: item.totalLateReturnHours
+            }));
         } catch (error) {
             console.error('Error in getTopReliableStudentsAggregated:', error);
             throw error;

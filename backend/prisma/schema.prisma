@@ -1,0 +1,178 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               Int            @id @default(autoincrement())
+  name             String
+  email            String         @unique
+  passwordHash     String
+  role             String         @default("student") // student, warden, guard, admin
+  hostelBlock      String?
+  roomNo           String?
+  phone            String?
+  parentPhone      String?
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  
+  leavesApplied    Leave[]        @relation("StudentLeaves")
+  leavesApproved   Leave[]        @relation("ApprovedLeaves")
+  gateLogs         GateLog[]      @relation("StudentGateLogs")
+  gateLogsMarked   GateLog[]      @relation("MarkedGateLogs")
+  attendance       Attendance[]   @relation("StudentAttendance")
+  attendanceMarked Attendance[]   @relation("MarkedAttendance")
+  stats            StudentStats?
+  auditLogs        AuditLog[]
+
+  @@map("users")
+}
+
+model Leave {
+  id                   Int       @id @default(autoincrement())
+  studentId            Int
+  student              User      @relation("StudentLeaves", fields: [studentId], references: [id], onDelete: Cascade)
+  leaveType            String    @default("REGULAR") // REGULAR, EMERGENCY, MEDICAL, OTHER
+  fromDateTime         DateTime
+  toDateTime           DateTime
+  reason               String
+  status               String    @default("PENDING") // PENDING, APPROVED, REJECTED, AUTO_APPROVED, FLAGGED
+  approvedBy           Int?
+  approver             User?     @relation("ApprovedLeaves", fields: [approvedBy], references: [id], onDelete: SetNull)
+  approvedAt           DateTime?
+  remarks              String?
+  gatePassId           String?   @unique
+  currentStatus        String    @default("IN") // IN, OUT
+  
+  // ML Risk stats
+  riskScore            Float?
+  riskCategory         String?   // LOW, MEDIUM, HIGH
+  attendanceScore      Float?
+  historyScore         Float?
+  calendarScore        Float?
+  patternScore         Float?
+  aiDecision           String?   // AUTO_APPROVED, FLAGGED, MANUAL
+  aiDecisionReason     String?
+  
+  // Return tracking
+  returnedOnTime       Boolean?
+  actualReturnDateTime DateTime?
+  lateReturnHours      Float     @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  gateLogs             GateLog[]
+
+  @@map("leaves")
+}
+
+model GateLog {
+  id           Int      @id @default(autoincrement())
+  gatePassId   String
+  studentId    Int
+  student      User     @relation("StudentGateLogs", fields: [studentId], references: [id], onDelete: Cascade)
+  leaveId      Int?
+  leave        Leave?   @relation(fields: [leaveId], references: [id], onDelete: SetNull)
+  action       String   // EXIT, ENTRY
+  timestamp    DateTime @default(now())
+  isOverstayed Boolean  @default(false)
+  markedBy     Int?
+  marker       User?    @relation("MarkedGateLogs", fields: [markedBy], references: [id], onDelete: SetNull)
+  remarks      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("gate_logs")
+}
+
+model Attendance {
+  id               Int      @id @default(autoincrement())
+  studentId        Int
+  student          User     @relation("StudentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+  date             DateTime
+  status           String   @default("NOT_MARKED") // PRESENT, ABSENT, ON_LEAVE, LATE, NOT_MARKED
+  markedBy         Int?
+  marker           User?    @relation("MarkedAttendance", fields: [markedBy], references: [id], onDelete: SetNull)
+  curfewViolation  Boolean  @default(false)
+  violationMinutes Int      @default(0)
+  remarks          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("attendance")
+}
+
+model AcademicCalendar {
+  id             Int      @id @default(autoincrement())
+  title          String
+  eventType      String   @default("HOLIDAY") // HOLIDAY, EXAM, EVENT, OTHER
+  startDate      DateTime
+  endDate        DateTime
+  leavePolicy    String   @default("NORMAL") // BLOCKED, FLAGGED, DISCOURAGED, NORMAL, ENCOURAGED
+  riskModifier   Int      @default(0)
+  priority       Int      @default(1)
+  affectsHostels String[] @default([])
+  affectsCourses String[] @default([])
+  affectsYears   Int[]    @default([])
+  academicYear   String   @default("2025-2026")
+  semester       String   @default("BOTH") // ODD, EVEN, BOTH
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("academic_calendar")
+}
+
+model StudentStats {
+  id                          Int      @id @default(autoincrement())
+  studentId                   Int      @unique
+  student                     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  totalLeavesApplied          Int      @default(0)
+  totalLeavesApproved         Int      @default(0)
+  totalLeavesRejected         Int      @default(0)
+  totalLeavesAutoApproved     Int      @default(0)
+  totalLeavesFlagged          Int      @default(0)
+  totalLeaveDaysTaken         Int      @default(0)
+  onTimeReturns               Int      @default(0)
+  lateReturns                 Int      @default(0)
+  totalLateReturnHours        Float    @default(0)
+  returnReliabilityScore      Float    @default(100)
+  avgLeaveDuration            Float    @default(0)
+  avgLeaveFrequency           Float    @default(0)
+  frequentLeaveType           String?
+  leavesThisMonth             Int      @default(0)
+  leavesThisSemester          Int      @default(0)
+  totalDays                   Int      @default(0)
+  presentDays                 Int      @default(0)
+  absentDays                  Int      @default(0)
+  lateDays                    Int      @default(0)
+  curfewViolations            Int      @default(0)
+  totalCurfewViolationMinutes Int      @default(0)
+  attendancePercentage        Float    @default(100)
+  overallRiskScore            Float    @default(0)
+  riskCategory                String   @default("LOW") // LOW, MEDIUM, HIGH
+  lastUpdated                 DateTime @default(now())
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@map("student_stats")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  action      String
+  model       String
+  documentId  String
+  performedBy Int?
+  performer   User?    @relation(fields: [performedBy], references: [id], onDelete: SetNull)
+  details     String?
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("audit_logs")
+}

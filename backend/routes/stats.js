@@ -1,26 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const StatsService = require('../services/statsService');
-const StudentStats = require('../models/StudentStats');
+const { prisma } = require('../config/db');
 const { protect: auth } = require('../middleware/auth');
-
-/**
- * Stats API Routes
- * Provides access to student statistics for ML-based leave approval
- */
 
 // ===== STUDENT ROUTES =====
 
-/**
- * GET /api/stats/my-stats
- * Get current logged-in student's statistics
- */
 router.get('/my-stats', auth, async (req, res) => {
     try {
         let stats = await StatsService.getStats(req.user.id);
         
         if (!stats) {
-            // Initialize stats if not exists
             stats = await StatsService.initializeStats(req.user.id);
         }
 
@@ -38,10 +28,6 @@ router.get('/my-stats', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/stats/my-risk
- * Get current student's risk assessment summary
- */
 router.get('/my-risk', auth, async (req, res) => {
     try {
         const stats = await StatsService.getStats(req.user.id);
@@ -62,7 +48,12 @@ router.get('/my-risk', auth, async (req, res) => {
             data: {
                 riskScore: stats.overallRiskScore,
                 riskCategory: stats.riskCategory,
-                componentScores: stats.componentScores,
+                componentScores: {
+                    attendance: 100 - stats.attendancePercentage,
+                    history: 100 - stats.returnReliabilityScore,
+                    curfew: stats.curfewViolations * 20,
+                    frequency: stats.leavesThisMonth * 25
+                },
                 attendancePercentage: stats.attendancePercentage,
                 returnReliabilityScore: stats.returnReliabilityScore,
                 tips: generateImprovementTips(stats)
@@ -78,10 +69,6 @@ router.get('/my-risk', auth, async (req, res) => {
 
 // ===== WARDEN/ADMIN ROUTES =====
 
-/**
- * GET /api/stats/student/:studentId
- * Get stats for a specific student (warden/admin only)
- */
 router.get('/student/:studentId', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -109,10 +96,6 @@ router.get('/student/:studentId', auth, async (req, res) => {
     }
 });
 
-/**
- * POST /api/stats/refresh/:studentId
- * Manually refresh stats for a student (warden/admin only)
- */
 router.post('/refresh/:studentId', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -137,10 +120,6 @@ router.post('/refresh/:studentId', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/stats/high-risk
- * Get all high-risk students (warden/admin only)
- */
 router.get('/high-risk', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -151,11 +130,15 @@ router.get('/high-risk', auth, async (req, res) => {
         }
 
         const highRiskStudents = await StatsService.getHighRiskStudents();
+        const formatted = highRiskStudents.map(item => ({
+            ...item,
+            studentId: item.student
+        }));
         
         res.json({ 
             success: true, 
-            count: highRiskStudents.length,
-            data: highRiskStudents 
+            count: formatted.length,
+            data: formatted 
         });
     } catch (error) {
         res.status(500).json({ 
@@ -165,10 +148,6 @@ router.get('/high-risk', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/stats/distribution
- * Get risk distribution across all students (warden/admin only)
- */
 router.get('/distribution', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -192,10 +171,6 @@ router.get('/distribution', auth, async (req, res) => {
     }
 });
 
-/**
- * POST /api/stats/refresh-all
- * Refresh stats for all students (admin only)
- */
 router.post('/refresh-all', auth, async (req, res) => {
     try {
         if (req.user.role !== 'admin') {
@@ -220,23 +195,38 @@ router.post('/refresh-all', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/stats/leaderboard
- * Get students ranked by attendance (for gamification)
- */
 router.get('/leaderboard', auth, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
         
-        const topStudents = await StudentStats.find({})
-            .populate('studentId', 'name hostelBlock roomNo')
-            .sort({ attendancePercentage: -1, returnReliabilityScore: -1 })
-            .limit(limit)
-            .select('studentId attendancePercentage returnReliabilityScore overallRiskScore');
+        const topStudents = await prisma.studentStats.findMany({
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                }
+            },
+            orderBy: [
+                { attendancePercentage: 'desc' },
+                { returnReliabilityScore: 'desc' }
+            ],
+            take: limit
+        });
+
+        const formatted = topStudents.map(item => ({
+            id: item.id,
+            attendancePercentage: item.attendancePercentage,
+            returnReliabilityScore: item.returnReliabilityScore,
+            overallRiskScore: item.overallRiskScore,
+            studentId: item.student
+        }));
 
         res.json({ 
             success: true, 
-            data: topStudents 
+            data: formatted 
         });
     } catch (error) {
         res.status(500).json({ 
@@ -246,14 +236,8 @@ router.get('/leaderboard', auth, async (req, res) => {
     }
 });
 
-// ===== MONGODB AGGREGATION ROUTES =====
+// ===== MONGODB/SQL AGGREGATION ROUTES =====
 
-/**
- * GET /api/stats/aggregation/risk-distribution
- * Get risk distribution using MongoDB aggregation pipeline
- * Demonstrates: $group, $sort, $project
- * Warden/Admin only
- */
 router.get('/aggregation/risk-distribution', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -267,7 +251,7 @@ router.get('/aggregation/risk-distribution', auth, async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: 'Risk distribution aggregated using MongoDB aggregation pipeline',
+            message: 'Risk distribution aggregated using PostgreSQL SQL grouping queries',
             data: distribution 
         });
     } catch (error) {
@@ -278,12 +262,6 @@ router.get('/aggregation/risk-distribution', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/stats/aggregation/leave-statistics
- * Get leave statistics grouped by type and status
- * Demonstrates: $group, $sort, $project with computed fields
- * Warden/Admin only
- */
 router.get('/aggregation/leave-statistics', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -295,7 +273,6 @@ router.get('/aggregation/leave-statistics', auth, async (req, res) => {
 
         let statistics = await StatsService.getLeaveStatisticsAggregated();
         
-        // Ensure all values are properly defined (not undefined)
         statistics = statistics.map(stat => ({
             leaveType: stat.leaveType || 'UNKNOWN',
             status: stat.status || 'PENDING',
@@ -306,7 +283,7 @@ router.get('/aggregation/leave-statistics', auth, async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: 'Leave statistics aggregated using MongoDB grouping and computed fields',
+            message: 'Leave statistics aggregated using SQL timestamp interval duration mappings',
             data: statistics 
         });
     } catch (error) {
@@ -318,12 +295,6 @@ router.get('/aggregation/leave-statistics', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/stats/aggregation/attendance-by-hostel
- * Get attendance summary by hostel using $lookup and $group
- * Demonstrates: $lookup (join), $group, $project with conditional fields
- * Warden/Admin only
- */
 router.get('/aggregation/attendance-by-hostel', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -337,7 +308,7 @@ router.get('/aggregation/attendance-by-hostel', auth, async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: 'Attendance summary aggregated using $lookup (join) and $group operations',
+            message: 'Attendance summary aggregated using SQL join operations on tables users and student_stats',
             data: summary 
         });
     } catch (error) {
@@ -348,12 +319,6 @@ router.get('/aggregation/attendance-by-hostel', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/stats/aggregation/top-reliable-students
- * Get top reliable students using aggregation pipeline
- * Demonstrates: $lookup, $sort, $limit, $project
- * Warden/Admin only
- */
 router.get('/aggregation/top-reliable-students', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -368,7 +333,7 @@ router.get('/aggregation/top-reliable-students', auth, async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: `Top ${limit} reliable students retrieved using aggregation pipeline with $lookup and $sort`,
+            message: `Top ${limit} reliable students retrieved using SQL joins with ORDER BY queries`,
             data: topStudents 
         });
     } catch (error) {
@@ -381,9 +346,6 @@ router.get('/aggregation/top-reliable-students', auth, async (req, res) => {
 
 // ===== HELPER FUNCTIONS =====
 
-/**
- * Generate improvement tips based on stats
- */
 function generateImprovementTips(stats) {
     const tips = [];
 

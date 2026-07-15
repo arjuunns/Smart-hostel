@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { prisma } = require('../config/db');
 
 // Protect routes - verify JWT token
 const protect = async (req, res, next) => {
@@ -14,15 +14,21 @@ const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
             // Get user from token
-            req.user = await User.findById(decoded.id).select('-passwordHash');
+            const user = await prisma.user.findUnique({
+                where: { id: parseInt(decoded.id) }
+            });
 
-            if (!req.user) {
+            if (!user) {
                 return res.status(401).json({ success: false, message: 'User not found' });
             }
 
-            if (!req.user.isActive) {
+            if (!user.isActive) {
                 return res.status(401).json({ success: false, message: 'User account is deactivated' });
             }
+
+            // Exclude passwordHash
+            const { passwordHash, ...userWithoutPassword } = user;
+            req.user = userWithoutPassword;
 
             next();
         } catch (error) {
@@ -43,6 +49,7 @@ const authorize = (...roles) => {
             return res.status(403).json({ 
                 success: false, 
                 message: `Role '${req.user.role}' is not authorized to access this route` 
+                
             });
         }
         next();

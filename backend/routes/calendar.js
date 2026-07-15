@@ -1,20 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const CalendarService = require('../services/calendarService');
-const AcademicCalendar = require('../models/AcademicCalendar');
+const { prisma } = require('../config/db');
 const { protect: auth } = require('../middleware/auth');
-
-/**
- * Calendar API Routes
- * Manages academic calendar for ML-based leave approval
- */
 
 // ===== PUBLIC/STUDENT ROUTES =====
 
-/**
- * GET /api/calendar/current-restrictions
- * Get current active restrictions
- */
 router.get('/current-restrictions', auth, async (req, res) => {
     try {
         const restrictions = await CalendarService.getCurrentRestrictions();
@@ -25,7 +16,7 @@ router.get('/current-restrictions', auth, async (req, res) => {
             data: {
                 isRestrictedToday: isRestricted.isRestricted,
                 activeRestrictions: restrictions.map(r => ({
-                    id: r._id,
+                    id: r.id,
                     title: r.title,
                     type: r.eventType,
                     policy: r.leavePolicy,
@@ -40,10 +31,6 @@ router.get('/current-restrictions', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/calendar/upcoming
- * Get upcoming events
- */
 router.get('/upcoming', auth, async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 30;
@@ -59,10 +46,6 @@ router.get('/upcoming', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/calendar/upcoming-restrictions
- * Get upcoming restrictions students should know about
- */
 router.get('/upcoming-restrictions', auth, async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 14;
@@ -78,7 +61,7 @@ router.get('/upcoming-restrictions', auth, async (req, res) => {
                 startDate: r.startDate,
                 endDate: r.endDate,
                 riskModifier: r.riskModifier,
-                notifyBefore: r.notifyBefore
+                notifyBefore: 3 // default
             }))
         });
     } catch (error) {
@@ -86,10 +69,6 @@ router.get('/upcoming-restrictions', auth, async (req, res) => {
     }
 });
 
-/**
- * POST /api/calendar/analyze-dates
- * Analyze leave dates against calendar
- */
 router.post('/analyze-dates', auth, async (req, res) => {
     try {
         const { fromDate, toDate } = req.body;
@@ -101,7 +80,6 @@ router.post('/analyze-dates', auth, async (req, res) => {
             });
         }
 
-        // Get student info from the authenticated user
         const student = {
             hostelBlock: req.user.hostelBlock,
             course: req.user.course,
@@ -119,10 +97,6 @@ router.post('/analyze-dates', auth, async (req, res) => {
     }
 });
 
-/**
- * POST /api/calendar/suggest-dates
- * Get suggested leave dates based on calendar
- */
 router.post('/suggest-dates', auth, async (req, res) => {
     try {
         const { daysNeeded, preferredStart, flexibilityDays } = req.body;
@@ -150,10 +124,6 @@ router.post('/suggest-dates', auth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/calendar/month/:year/:month
- * Get calendar summary for a specific month
- */
 router.get('/month/:year/:month', auth, async (req, res) => {
     try {
         const year = parseInt(req.params.year);
@@ -179,10 +149,6 @@ router.get('/month/:year/:month', auth, async (req, res) => {
 
 // ===== ADMIN/WARDEN ROUTES =====
 
-/**
- * GET /api/calendar/all
- * Get all calendar events
- */
 router.get('/all', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -190,15 +156,16 @@ router.get('/all', auth, async (req, res) => {
         }
 
         const { academicYear, eventType, isActive } = req.query;
-        const filter = {};
+        const whereClause = {};
 
-        if (academicYear) filter.academicYear = academicYear;
-        if (eventType) filter.eventType = eventType;
-        if (isActive !== undefined) filter.isActive = isActive === 'true';
+        if (academicYear) whereClause.academicYear = academicYear;
+        if (eventType) whereClause.eventType = eventType;
+        if (isActive !== undefined) whereClause.isActive = isActive === 'true';
 
-        const events = await AcademicCalendar.find(filter)
-            .sort({ startDate: 1 })
-            .populate('createdBy', 'name email');
+        const events = await prisma.academicCalendar.findMany({
+            where: whereClause,
+            orderBy: { startDate: 'asc' }
+        });
 
         res.json({
             success: true,
@@ -210,26 +177,6 @@ router.get('/all', auth, async (req, res) => {
     }
 });
 
-/**
- * POST /api/calendar/event
- * Create a new calendar event
- * 
- * Request body:
- * - title, eventType, startDate, endDate, academicYear (required)
- * - affectsHostels, affectsCourses, affectsYears (arrays - can use $push/$addToSet later)
- * 
- * Example:
- * {
- *   "title": "Mid Semester Exam",
- *   "eventType": "EXAM",
- *   "startDate": "2026-06-01",
- *   "endDate": "2026-06-15",
- *   "academicYear": "2025-2026",
- *   "affectsHostels": ["Block A", "Block B"],
- *   "affectsCourses": ["CSE", "ECE"],
- *   "affectsYears": [1, 2, 3]
- * }
- */
 router.post('/event', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
@@ -252,7 +199,6 @@ router.post('/event', auth, async (req, res) => {
             semester
         } = req.body;
 
-        // Validation
         if (!title || !eventType || !startDate || !endDate || !academicYear) {
             return res.status(400).json({
                 success: false,
@@ -264,16 +210,16 @@ router.post('/event', auth, async (req, res) => {
             title,
             description,
             eventType,
-            startDate: new Date(startDate),
-            endDate: new Date(endDate),
-            leavePolicy: leavePolicy || 'NORMAL',
-            riskModifier: riskModifier || 0,
-            affectsHostels: affectsHostels && Array.isArray(affectsHostels) ? [...new Set(affectsHostels)] : [],
-            affectsCourses: affectsCourses && Array.isArray(affectsCourses) ? [...new Set(affectsCourses)] : [],
-            affectsYears: affectsYears && Array.isArray(affectsYears) ? [...new Set(affectsYears)] : [],
-            priority: priority || 1,
+            startDate,
+            endDate,
+            leavePolicy,
+            riskModifier,
+            affectsHostels,
+            affectsCourses,
+            affectsYears,
+            priority,
             academicYear,
-            semester: semester || 'BOTH'
+            semester
         }, req.user.id);
 
         res.status(201).json({
@@ -286,48 +232,23 @@ router.post('/event', auth, async (req, res) => {
     }
 });
 
-/**
- * PUT /api/calendar/event/:id
- * Update a calendar event
- * 
- * Supports:
- * - Regular field updates: { title: "new title", leavePolicy: "NORMAL" }
- * - Array PUSH (add duplicates allowed): { $push: { affectsHostels: "Block D" } }
- * - Array ADDTOSET (no duplicates): { $addToSet: { affectsCourses: { $each: ["IT", "CSE"] } } }
- */
 router.put('/event/:id', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        const { $push, $addToSet, ...regularUpdates } = req.body;
+        const eventId = parseInt(req.params.id);
+        const { startDate, endDate, ...updates } = req.body;
         
-        // Build the update object
-        const updateObj = { ...regularUpdates, updatedAt: new Date() };
-        
-        // If array operations provided, add them to update
-        if ($push || $addToSet) {
-            if ($push) {
-                Object.assign(updateObj, { $push });
-            }
-            if ($addToSet) {
-                Object.assign(updateObj, { $addToSet });
-            }
-        }
+        const dataUpdate = { ...updates };
+        if (startDate) dataUpdate.startDate = new Date(startDate);
+        if (endDate) dataUpdate.endDate = new Date(endDate);
 
-        const event = await AcademicCalendar.findByIdAndUpdate(
-            req.params.id,
-            updateObj,
-            { new: true, runValidators: true }
-        );
-
-        if (!event) {
-            return res.status(404).json({
-                success: false,
-                message: 'Event not found'
-            });
-        }
+        const event = await prisma.academicCalendar.update({
+            where: { id: eventId },
+            data: dataUpdate
+        });
 
         res.json({
             success: true,
@@ -339,24 +260,16 @@ router.put('/event/:id', auth, async (req, res) => {
     }
 });
 
-/**
- * DELETE /api/calendar/event/:id
- * Delete a calendar event
- */
 router.delete('/event/:id', auth, async (req, res) => {
     try {
         if (req.user.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Admin access required' });
         }
 
-        const event = await AcademicCalendar.findByIdAndDelete(req.params.id);
-
-        if (!event) {
-            return res.status(404).json({
-                success: false,
-                message: 'Event not found'
-            });
-        }
+        const eventId = parseInt(req.params.id);
+        await prisma.academicCalendar.delete({
+            where: { id: eventId }
+        });
 
         res.json({
             success: true,
@@ -367,10 +280,6 @@ router.delete('/event/:id', auth, async (req, res) => {
     }
 });
 
-/**
- * POST /api/calendar/seed
- * Seed default academic calendar events (admin only)
- */
 router.post('/seed', auth, async (req, res) => {
     try {
         if (req.user.role !== 'admin') {
@@ -398,17 +307,16 @@ router.post('/seed', auth, async (req, res) => {
     }
 });
 
-/**
- * PATCH /api/calendar/event/:id/toggle
- * Toggle event active status
- */
 router.patch('/event/:id/toggle', auth, async (req, res) => {
     try {
         if (!['warden', 'admin'].includes(req.user.role)) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        const event = await AcademicCalendar.findById(req.params.id);
+        const eventId = parseInt(req.params.id);
+        const event = await prisma.academicCalendar.findUnique({
+            where: { id: eventId }
+        });
         
         if (!event) {
             return res.status(404).json({
@@ -417,13 +325,15 @@ router.patch('/event/:id/toggle', auth, async (req, res) => {
             });
         }
 
-        event.isActive = !event.isActive;
-        await event.save();
+        const updated = await prisma.academicCalendar.update({
+            where: { id: eventId },
+            data: { isActive: !event.isActive }
+        });
 
         res.json({
             success: true,
-            message: `Event ${event.isActive ? 'activated' : 'deactivated'}`,
-            data: event
+            message: `Event ${updated.isActive ? 'activated' : 'deactivated'}`,
+            data: updated
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

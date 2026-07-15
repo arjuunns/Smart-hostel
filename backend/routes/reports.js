@@ -1,9 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Leave = require('../models/Leave');
-const Attendance = require('../models/Attendance');
-const GateLog = require('../models/GateLog');
-const AuditLog = require('../models/AuditLog');
+const { prisma } = require('../config/db');
 const { protect, authorize } = require('../middleware/auth');
 
 // @route   GET /api/reports/leaves
@@ -12,18 +9,33 @@ const { protect, authorize } = require('../middleware/auth');
 router.get('/leaves', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
         const { from, to, format } = req.query;
-        const filter = {};
+        const whereClause = {};
 
         if (from || to) {
-            filter.createdAt = {};
-            if (from) filter.createdAt.$gte = new Date(from);
-            if (to) filter.createdAt.$lte = new Date(to);
+            whereClause.createdAt = {};
+            if (from) whereClause.createdAt.gte = new Date(from);
+            if (to) whereClause.createdAt.lte = new Date(to);
         }
 
-        const leaves = await Leave.find(filter)
-            .populate('studentId', 'name email hostelBlock roomNo')
-            .populate('approvedBy', 'name')
-            .sort({ createdAt: -1 });
+        const leaves = await prisma.leave.findMany({
+            where: whereClause,
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        email: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                },
+                approver: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
 
         // Generate summary
         const summary = {
@@ -43,7 +55,7 @@ router.get('/leaves', protect, authorize('warden', 'admin'), async (req, res) =>
         if (format === 'csv') {
             const csvHeader = 'Student Name,Email,Hostel Block,Room,Leave Type,From,To,Status,Approved By,Remarks\n';
             const csvRows = leaves.map(l => 
-                `"${l.studentId?.name || ''}","${l.studentId?.email || ''}","${l.studentId?.hostelBlock || ''}","${l.studentId?.roomNo || ''}","${l.leaveType}","${l.fromDateTime}","${l.toDateTime}","${l.status}","${l.approvedBy?.name || ''}","${l.remarks || ''}"`
+                `"${l.student?.name || ''}","${l.student?.email || ''}","${l.student?.hostelBlock || ''}","${l.student?.roomNo || ''}","${l.leaveType}","${l.fromDateTime}","${l.toDateTime}","${l.status}","${l.approver?.name || ''}","${l.remarks || ''}"`
             ).join('\n');
 
             res.setHeader('Content-Type', 'text/csv');
@@ -51,11 +63,18 @@ router.get('/leaves', protect, authorize('warden', 'admin'), async (req, res) =>
             return res.send(csvHeader + csvRows);
         }
 
+        // Map database fields to support legacy format
+        const formattedLeaves = leaves.map(l => ({
+            ...l,
+            studentId: l.student,
+            approvedBy: l.approver
+        }));
+
         res.json({
             success: true,
             summary,
-            count: leaves.length,
-            data: leaves
+            count: formattedLeaves.length,
+            data: formattedLeaves
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -68,22 +87,37 @@ router.get('/leaves', protect, authorize('warden', 'admin'), async (req, res) =>
 router.get('/attendance', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
         const { date, from, to, format } = req.query;
-        const filter = {};
+        const whereClause = {};
 
         if (date) {
             const attendanceDate = new Date(date);
             attendanceDate.setHours(0, 0, 0, 0);
-            filter.date = attendanceDate;
+            whereClause.date = attendanceDate;
         } else if (from || to) {
-            filter.date = {};
-            if (from) filter.date.$gte = new Date(from);
-            if (to) filter.date.$lte = new Date(to);
+            whereClause.date = {};
+            if (from) whereClause.date.gte = new Date(from);
+            if (to) whereClause.date.lte = new Date(to);
         }
 
-        const attendance = await Attendance.find(filter)
-            .populate('studentId', 'name email hostelBlock roomNo')
-            .populate('markedBy', 'name')
-            .sort({ date: -1 });
+        const attendance = await prisma.attendance.findMany({
+            where: whereClause,
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        email: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                },
+                marker: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+            orderBy: { date: 'desc' }
+        });
 
         // Generate summary
         const summary = {
@@ -97,7 +131,7 @@ router.get('/attendance', protect, authorize('warden', 'admin'), async (req, res
         if (format === 'csv') {
             const csvHeader = 'Date,Student Name,Email,Hostel Block,Room,Status,Marked By\n';
             const csvRows = attendance.map(a => 
-                `"${a.date.toISOString().split('T')[0]}","${a.studentId?.name || ''}","${a.studentId?.email || ''}","${a.studentId?.hostelBlock || ''}","${a.studentId?.roomNo || ''}","${a.status}","${a.markedBy?.name || ''}"`
+                `"${a.date.toISOString().split('T')[0]}","${a.student?.name || ''}","${a.student?.email || ''}","${a.student?.hostelBlock || ''}","${a.student?.roomNo || ''}","${a.status}","${a.marker?.name || ''}"`
             ).join('\n');
 
             res.setHeader('Content-Type', 'text/csv');
@@ -105,11 +139,18 @@ router.get('/attendance', protect, authorize('warden', 'admin'), async (req, res
             return res.send(csvHeader + csvRows);
         }
 
+        // Map database fields to support legacy format
+        const formattedAttendance = attendance.map(a => ({
+            ...a,
+            studentId: a.student,
+            markedBy: a.marker
+        }));
+
         res.json({
             success: true,
             summary,
-            count: attendance.length,
-            data: attendance
+            count: formattedAttendance.length,
+            data: formattedAttendance
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -122,20 +163,35 @@ router.get('/attendance', protect, authorize('warden', 'admin'), async (req, res
 router.get('/gate-logs', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
         const { from, to, action, format } = req.query;
-        const filter = {};
+        const whereClause = {};
 
-        if (action) filter.action = action;
+        if (action) whereClause.action = action;
 
         if (from || to) {
-            filter.timestamp = {};
-            if (from) filter.timestamp.$gte = new Date(from);
-            if (to) filter.timestamp.$lte = new Date(to);
+            whereClause.timestamp = {};
+            if (from) whereClause.timestamp.gte = new Date(from);
+            if (to) whereClause.timestamp.lte = new Date(to);
         }
 
-        const logs = await GateLog.find(filter)
-            .populate('studentId', 'name email hostelBlock roomNo')
-            .populate('performedBy', 'name')
-            .sort({ timestamp: -1 });
+        const logs = await prisma.gateLog.findMany({
+            where: whereClause,
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        email: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                },
+                marker: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+            orderBy: { timestamp: 'desc' }
+        });
 
         // Generate summary
         const summary = {
@@ -148,7 +204,7 @@ router.get('/gate-logs', protect, authorize('warden', 'admin'), async (req, res)
         if (format === 'csv') {
             const csvHeader = 'Timestamp,Student Name,Email,Hostel Block,Room,Action,Gate Pass ID,Guard\n';
             const csvRows = logs.map(l => 
-                `"${l.timestamp}","${l.studentId?.name || ''}","${l.studentId?.email || ''}","${l.studentId?.hostelBlock || ''}","${l.studentId?.roomNo || ''}","${l.action}","${l.gatePassId}","${l.performedBy?.name || ''}"`
+                `"${l.timestamp}","${l.student?.name || ''}","${l.student?.email || ''}","${l.student?.hostelBlock || ''}","${l.student?.roomNo || ''}","${l.action}","${l.gatePassId}","${l.marker?.name || ''}"`
             ).join('\n');
 
             res.setHeader('Content-Type', 'text/csv');
@@ -156,11 +212,18 @@ router.get('/gate-logs', protect, authorize('warden', 'admin'), async (req, res)
             return res.send(csvHeader + csvRows);
         }
 
+        // Map database fields to support legacy format
+        const formattedLogs = logs.map(l => ({
+            ...l,
+            studentId: l.student,
+            performedBy: l.marker
+        }));
+
         res.json({
             success: true,
             summary,
-            count: logs.length,
-            data: logs
+            count: formattedLogs.length,
+            data: formattedLogs
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -173,25 +236,41 @@ router.get('/gate-logs', protect, authorize('warden', 'admin'), async (req, res)
 router.get('/audit-logs', protect, authorize('admin'), async (req, res) => {
     try {
         const { from, to, action } = req.query;
-        const filter = {};
+        const whereClause = {};
 
-        if (action) filter.action = action;
+        if (action) whereClause.action = action;
 
         if (from || to) {
-            filter.timestamp = {};
-            if (from) filter.timestamp.$gte = new Date(from);
-            if (to) filter.timestamp.$lte = new Date(to);
+            whereClause.timestamp = {};
+            if (from) whereClause.timestamp.gte = new Date(from);
+            if (to) whereClause.timestamp.lte = new Date(to);
         }
 
-        const logs = await AuditLog.find(filter)
-            .populate('performedBy', 'name email role')
-            .sort({ timestamp: -1 })
-            .limit(500);
+        const logs = await prisma.auditLog.findMany({
+            where: whereClause,
+            include: {
+                performer: {
+                    select: {
+                        name: true,
+                        email: true,
+                        role: true
+                    }
+                }
+            },
+            orderBy: { timestamp: 'desc' },
+            take: 500
+        });
+
+        // Map database fields to support legacy format
+        const formattedLogs = logs.map(l => ({
+            ...l,
+            performedBy: l.performer
+        }));
 
         res.json({
             success: true,
-            count: logs.length,
-            data: logs
+            count: formattedLogs.length,
+            data: formattedLogs
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Leave = require('../models/Leave');
-const GateLog = require('../models/GateLog');
-const AuditLog = require('../models/AuditLog');
+const { prisma } = require('../config/db');
 const { protect, authorize } = require('../middleware/auth');
 
 // Helper: Mock parent notification
@@ -22,13 +20,16 @@ router.post('/exit', protect, authorize('guard', 'admin'), async (req, res) => {
         }
 
         // Find leave with this gate pass
-        const leave = await Leave.findOne({ gatePassId }).populate('studentId', 'name email parentPhone');
+        const leave = await prisma.leave.findUnique({
+            where: { gatePassId },
+            include: { student: true }
+        });
 
         if (!leave) {
             return res.status(404).json({ success: false, message: 'Invalid Gate Pass ID' });
         }
 
-        if (leave.status !== 'APPROVED') {
+        if (leave.status !== 'APPROVED' && leave.status !== 'AUTO_APPROVED') {
             return res.status(400).json({ success: false, message: 'Leave is not approved' });
         }
 
@@ -43,28 +44,32 @@ router.post('/exit', protect, authorize('guard', 'admin'), async (req, res) => {
         }
 
         // Create exit log
-        const gateLog = await GateLog.create({
-            studentId: leave.studentId._id,
-            leaveId: leave._id,
-            gatePassId,
-            action: 'EXIT',
-            performedBy: req.user._id
+        const gateLog = await prisma.gateLog.create({
+            data: {
+                studentId: leave.studentId,
+                leaveId: leave.id,
+                gatePassId,
+                action: 'EXIT',
+                markedBy: req.user.id
+            }
         });
 
         // Update leave status
-        leave.currentStatus = 'OUT';
-        await leave.save();
+        await prisma.leave.update({
+            where: { id: leave.id },
+            data: { currentStatus: 'OUT' }
+        });
 
         // Mock parent notification
-        notifyParent('EXIT', leave.studentId.name, `Exited hostel at ${new Date().toLocaleString()}`);
+        notifyParent('EXIT', leave.student.name, `Exited hostel at ${new Date().toLocaleString()}`);
 
         res.json({
             success: true,
             message: 'Exit logged successfully',
             data: {
                 gateLog,
-                student: leave.studentId.name,
-                leaveId: leave._id
+                student: leave.student.name,
+                leaveId: leave.id
             }
         });
     } catch (error) {
@@ -85,7 +90,10 @@ router.post('/entry', protect, authorize('guard', 'admin'), async (req, res) => 
         }
 
         // Find leave with this gate pass
-        const leave = await Leave.findOne({ gatePassId }).populate('studentId', 'name email parentPhone');
+        const leave = await prisma.leave.findUnique({
+            where: { gatePassId },
+            include: { student: true }
+        });
 
         if (!leave) {
             return res.status(404).json({ success: false, message: 'Invalid Gate Pass ID' });
@@ -95,33 +103,43 @@ router.post('/entry', protect, authorize('guard', 'admin'), async (req, res) => 
             return res.status(400).json({ success: false, message: 'Student has not exited or already returned' });
         }
 
-        // Create entry log
-        const gateLog = await GateLog.create({
-            studentId: leave.studentId._id,
-            leaveId: leave._id,
-            gatePassId,
-            action: 'ENTRY',
-            performedBy: req.user._id
-        });
-
-        // Update leave status
-        leave.currentStatus = 'IN';
-        await leave.save();
-
         // Check if overstayed
         const now = new Date();
         const isOverstayed = now > leave.toDateTime;
 
+        // Create entry log
+        const gateLog = await prisma.gateLog.create({
+            data: {
+                studentId: leave.studentId,
+                leaveId: leave.id,
+                gatePassId,
+                action: 'ENTRY',
+                isOverstayed,
+                markedBy: req.user.id
+            }
+        });
+
+        // Update leave status
+        await prisma.leave.update({
+            where: { id: leave.id },
+            data: { 
+                currentStatus: 'IN',
+                returnedOnTime: !isOverstayed,
+                actualReturnDateTime: now,
+                lateReturnHours: isOverstayed ? (now - leave.toDateTime) / (1000 * 60 * 60) : 0
+            }
+        });
+
         // Mock parent notification
-        notifyParent('ENTRY', leave.studentId.name, `Returned to hostel at ${now.toLocaleString()}${isOverstayed ? ' (OVERSTAYED)' : ''}`);
+        notifyParent('ENTRY', leave.student.name, `Returned to hostel at ${now.toLocaleString()}${isOverstayed ? ' (OVERSTAYED)' : ''}`);
 
         res.json({
             success: true,
             message: 'Entry logged successfully',
             data: {
                 gateLog,
-                student: leave.studentId.name,
-                leaveId: leave._id,
+                student: leave.student.name,
+                leaveId: leave.id,
                 isOverstayed
             }
         });
@@ -136,17 +154,29 @@ router.post('/entry', protect, authorize('guard', 'admin'), async (req, res) => 
 // @access  Private (Guard/Warden/Admin)
 router.get('/out', protect, authorize('guard', 'warden', 'admin'), async (req, res) => {
     try {
-        const outStudents = await Leave.find({
-            status: 'APPROVED',
-            currentStatus: 'OUT'
-        })
-            .populate('studentId', 'name email hostelBlock roomNo phone')
-            .sort({ fromDateTime: -1 });
+        const outStudents = await prisma.leave.findMany({
+            where: {
+                status: { in: ['APPROVED', 'AUTO_APPROVED'] },
+                currentStatus: 'OUT'
+            },
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        email: true,
+                        hostelBlock: true,
+                        roomNo: true,
+                        phone: true
+                    }
+                }
+            },
+            orderBy: { fromDateTime: 'desc' }
+        });
 
         const now = new Date();
         const result = outStudents.map(leave => ({
-            _id: leave._id,
-            student: leave.studentId,
+            _id: leave.id,
+            student: leave.student,
             leaveType: leave.leaveType,
             fromDateTime: leave.fromDateTime,
             toDateTime: leave.toDateTime,
@@ -169,9 +199,13 @@ router.get('/out', protect, authorize('guard', 'warden', 'admin'), async (req, r
 // @access  Private (Warden/Admin)
 router.patch('/force-return/:leaveId', protect, authorize('warden', 'admin'), async (req, res) => {
     try {
+        const leaveId = parseInt(req.params.leaveId);
         const { remarks } = req.body;
 
-        const leave = await Leave.findById(req.params.leaveId).populate('studentId', 'name email');
+        const leave = await prisma.leave.findUnique({
+            where: { id: leaveId },
+            include: { student: true }
+        });
 
         if (!leave) {
             return res.status(404).json({ success: false, message: 'Leave not found' });
@@ -182,25 +216,40 @@ router.patch('/force-return/:leaveId', protect, authorize('warden', 'admin'), as
         }
 
         // Create forced entry log
-        const gateLog = await GateLog.create({
-            studentId: leave.studentId._id,
-            leaveId: leave._id,
-            gatePassId: leave.gatePassId,
-            action: 'ENTRY',
-            performedBy: req.user._id
+        const gateLog = await prisma.gateLog.create({
+            data: {
+                studentId: leave.studentId,
+                leaveId: leave.id,
+                gatePassId: leave.gatePassId || 'FORCE_PASS',
+                action: 'ENTRY',
+                remarks: remarks || 'Force returned',
+                markedBy: req.user.id
+            }
         });
 
         // Update leave status
-        leave.currentStatus = 'IN';
-        await leave.save();
+        const now = new Date();
+        const isOverstayed = now > leave.toDateTime;
+
+        await prisma.leave.update({
+            where: { id: leave.id },
+            data: { 
+                currentStatus: 'IN',
+                returnedOnTime: !isOverstayed,
+                actualReturnDateTime: now,
+                lateReturnHours: isOverstayed ? (now - leave.toDateTime) / (1000 * 60 * 60) : 0
+            }
+        });
 
         // Create audit log
-        await AuditLog.create({
-            action: 'FORCE_RETURN',
-            performedBy: req.user._id,
-            targetType: 'Leave',
-            targetId: leave._id,
-            details: { remarks, studentName: leave.studentId.name }
+        await prisma.auditLog.create({
+            data: {
+                action: 'FORCE_RETURN',
+                performedBy: req.user.id,
+                model: 'Leave',
+                documentId: leave.id.toString(),
+                details: JSON.stringify({ remarks, studentName: leave.student.name })
+            }
         });
 
         res.json({
@@ -222,28 +271,50 @@ router.patch('/force-return/:leaveId', protect, authorize('warden', 'admin'), as
 router.get('/logs', protect, authorize('guard', 'warden', 'admin'), async (req, res) => {
     try {
         const { action, date } = req.query;
-        const filter = {};
+        const whereClause = {};
 
-        if (action) filter.action = action;
+        if (action) whereClause.action = action;
         
         if (date) {
             const startOfDay = new Date(date);
             startOfDay.setHours(0, 0, 0, 0);
             const endOfDay = new Date(date);
             endOfDay.setHours(23, 59, 59, 999);
-            filter.timestamp = { $gte: startOfDay, $lte: endOfDay };
+            whereClause.timestamp = { gte: startOfDay, lte: endOfDay };
         }
 
-        const logs = await GateLog.find(filter)
-            .populate('studentId', 'name email hostelBlock roomNo')
-            .populate('performedBy', 'name')
-            .sort({ timestamp: -1 })
-            .limit(100);
+        const logs = await prisma.gateLog.findMany({
+            where: whereClause,
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        email: true,
+                        hostelBlock: true,
+                        roomNo: true
+                    }
+                },
+                marker: {
+                    select: {
+                        name: true
+                    }
+                }
+            },
+            orderBy: { timestamp: 'desc' },
+            take: 100
+        });
+
+        // Map model fields to support legacy frontend response format
+        const formattedLogs = logs.map(log => ({
+            ...log,
+            studentId: log.student,
+            performedBy: log.marker
+        }));
 
         res.json({
             success: true,
-            count: logs.length,
-            data: logs
+            count: formattedLogs.length,
+            data: formattedLogs
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
