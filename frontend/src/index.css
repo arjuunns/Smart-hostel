@@ -1955,3 +1955,83 @@ tr:hover {
 [data-theme="dark"] .auth-card .toggle-text a:hover {
     color: #f5cd8a;
 }
+
+/* ==========================================================================
+   DATEPICKER CUSTOM STYLING (THAPAR BRANDED)
+   ========================================================================== */
+
+/* Style the native date inputs wrapper */
+input[type="date"],
+input[type="datetime-local"] {
+    position: relative;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--text-color);
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+/* Style calendar picker button icon to match theme color */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%237B1818' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+    cursor: pointer;
+    filter: none;
+    transition: var(--transition);
+}
+
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23e8b86d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+}
+
+/* Hover and focus states */
+input[type="date"]:hover,
+input[type="datetime-local"]:hover {
+    border-color: var(--primary-color);
+    background-color: var(--hover-bg);
+}
+
+input[type="date"]:focus,
+input[type="datetime-local"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Custom styling for calendar dropdown overlay wrapper inside browser */
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+    color: var(--text-muted);
+    padding: 0 2px;
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+    color: var(--text-color);
+}
+
+/* Custom CSS to style the native calendar popup on supported engines */
+::-webkit-calendar-picker {
+    color: var(--text-color);
+    background-color: var(--bg-color);
+}
+
+/* Styling calendar picker sub-elements natively for Webkit engines */
+::-webkit-calendar-picker-indicator {
+    border-radius: 4px;
+    padding: 4px;
+}
+
+::-webkit-calendar-picker-indicator:hover {
+    background-color: var(--hover-bg);
+}
+
