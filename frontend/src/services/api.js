@@ -4,7 +4,7 @@ import gateService from './gate/gateService';
 import attendanceService from './attendance/attendanceService';
 import reportService from './reports/reportService';
 import statsService from './stats/statsService';
-import mlService from './ml/mlService';
+import riskService from './risk/riskService';
 import calendarService from './calendar/calendarService';
 
 const api = {
@@ -14,7 +14,7 @@ const api = {
     ...attendanceService,
     ...reportService,
     ...statsService,
-    ...mlService,
+    ...riskService,
     ...calendarService
 };
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const MLPredictionService = require('../services/mlPredictionService');
+const RiskAssessmentService = require('../services/riskAssessmentService');
 const { prisma } = require('../config/db');
 const { protect: auth } = require('../middleware/auth');
 
@@ -31,7 +31,7 @@ router.post('/predict', auth, async (req, res) => {
             year: req.user.year
         };
 
-        const prediction = await MLPredictionService.predictLeaveApproval(leaveRequest, studentInfo);
+        const prediction = await RiskAssessmentService.predictLeaveApproval(leaveRequest, studentInfo);
 
         if (req.user.role === 'student') {
             return res.json({
@@ -89,7 +89,7 @@ router.post('/predict/:leaveId', auth, async (req, res) => {
             year: leave.student.year
         };
 
-        const prediction = await MLPredictionService.predictLeaveApproval(leaveRequest, studentInfo);
+        const prediction = await RiskAssessmentService.predictLeaveApproval(leaveRequest, studentInfo);
 
         res.json({
             success: true,
@@ -142,7 +142,7 @@ router.post('/predict-batch', auth, async (req, res) => {
                     reason: leave.reason
                 };
 
-                const prediction = await MLPredictionService.predictLeaveApproval(leaveRequest, {
+                const prediction = await RiskAssessmentService.predictLeaveApproval(leaveRequest, {
                     hostelBlock: leave.student.hostelBlock,
                     course: leave.student.course,
                     year: leave.student.year
@@ -207,7 +207,7 @@ router.get('/patterns/:studentId', auth, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        const patterns = await MLPredictionService.detectPatterns(req.params.studentId, {});
+        const patterns = await RiskAssessmentService.detectPatterns(req.params.studentId, {});
 
         res.json({
             success: true,
@@ -220,7 +220,7 @@ router.get('/patterns/:studentId', auth, async (req, res) => {
 
 router.get('/model-info', auth, async (req, res) => {
     try {
-        const modelInfo = MLPredictionService.getModelInfo();
+        const modelInfo = RiskAssessmentService.getModelInfo();
 
         res.json({
             success: true,
@@ -262,7 +262,7 @@ router.get('/dashboard', auth, async (req, res) => {
         let highRiskCount = 0;
         for (const leave of pendingLeaves) {
             try {
-                const prediction = await MLPredictionService.predictLeaveApproval({
+                const prediction = await RiskAssessmentService.predictLeaveApproval({
                     studentId: leave.studentId,
                     fromDate: leave.fromDateTime,
                     toDate: leave.toDateTime,
@@ -287,7 +287,7 @@ router.get('/dashboard', auth, async (req, res) => {
                     total: totalAutoApproved + totalFlagged + recentApproved + recentRejected
                 },
                 highRiskPending: highRiskCount,
-                modelVersion: MLPredictionService.getModelInfo().version
+                modelVersion: RiskAssessmentService.getModelInfo().version
             }
         });
     } catch (error) {

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { prisma } = require('../config/db');
 const { protect, authorize } = require('../middleware/auth');
-const MLPredictionService = require('../services/mlPredictionService');
+const RiskAssessmentService = require('../services/riskAssessmentService');
 const StatsService = require('../services/statsService');
 
 // Helper: Mock parent notification
@@ -55,7 +55,7 @@ router.post('/apply', protect, authorize('student'), async (req, res) => {
         let aiDecisionReason = null;
 
         try {
-            prediction = await MLPredictionService.predictLeaveApproval(leaveRequest, studentInfo);
+            prediction = await RiskAssessmentService.predictLeaveApproval(leaveRequest, studentInfo);
             
             // Set status based on ML decision
             if (prediction.prediction.decision === 'AUTO_APPROVE') {

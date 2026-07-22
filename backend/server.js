@@ -20,7 +20,7 @@ app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/calendar', require('./routes/calendar'));
-app.use('/api/ml', require('./routes/ml'));
+app.use('/api/risk', require('./routes/risk'));
 
 app.get('/', (req, res) => {
     res.json({ 

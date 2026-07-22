@@ -4,5 +4,5 @@ export { default as gateService } from './gate/gateService';
 export { default as attendanceService } from './attendance/attendanceService';
 export { default as reportService } from './reports/reportService';
 export { default as statsService } from './stats/statsService';
-export { default as mlService } from './ml/mlService';
+export { default as riskService } from './risk/riskService';
 export { default as calendarService } from './calendar/calendarService';

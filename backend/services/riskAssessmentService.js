@@ -3,20 +3,20 @@ const CalendarService = require('./calendarService');
 const { prisma } = require('../config/db');
 
 /**
- * MLPredictionService - Machine Learning-based Leave Approval Prediction
+ * RiskAssessmentService - Rule-Based Leave Approval Risk Scoring
  * 
  * This service provides:
  * - Risk scoring with confidence levels
- * - Explainable AI decisions
+ * - Algorithmic evaluation decisions
  * - Pattern detection
  * - Auto-approval/flagging recommendations
  * 
- * Model Architecture:
- * - Rule-based scoring system (interpretable ML)
- * - Feature weights learned from historical data
+ * Scoring Architecture:
+ * - Weighted rule-based scoring system
+ * - Multi-factor feature weighting
  * - Confidence calculation based on data availability
  */
-class MLPredictionService {
+class RiskAssessmentService {
 
     // ===== FEATURE WEIGHTS (can be tuned or learned) =====
     static WEIGHTS = {
@@ -716,4 +716,4 @@ class MLPredictionService {
     }
 }
 
-module.exports = MLPredictionService;
+module.exports = RiskAssessmentService;

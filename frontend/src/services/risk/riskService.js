@@ -1,36 +1,36 @@
 import { request } from '../client';
 
-const mlService = {
+const riskService = {
     async predictLeave(leaveData) {
-        return request('/ml/predict', {
+        return request('/risk/predict', {
             method: 'POST',
             body: JSON.stringify(leaveData)
         });
     },
 
     async getPredictionForLeave(leaveId) {
-        return request(`/ml/predict/${leaveId}`, {
+        return request(`/risk/predict/${leaveId}`, {
             method: 'POST'
         });
     },
 
     async getBatchPredictions() {
-        return request('/ml/predict-batch', {
+        return request('/risk/predict-batch', {
             method: 'POST'
         });
     },
 
     async getStudentPatterns(studentId) {
-        return request(`/ml/patterns/${studentId}`);
+        return request(`/risk/patterns/${studentId}`);
     },
 
-    async getMLDashboard() {
-        return request('/ml/dashboard');
+    async getRiskDashboard() {
+        return request('/risk/dashboard');
     },
 
     async getModelInfo() {
-        return request('/ml/model-info');
+        return request('/risk/model-info');
     }
 };
 
-export default mlService;
+export default riskService;
