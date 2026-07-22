@@ -16,6 +16,21 @@ const Auth = () => {
     // Login Form State
     const [loginEmail, setLoginEmail] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
+    const [showTestCreds, setShowTestCreds] = useState(false);
+
+    const fillCredentials = (role) => {
+        const creds = {
+            admin: { email: 'admin@hostel.com', pass: 'Password123!' },
+            student: { email: 'arjun@student.com', pass: 'Password123!' },
+            guard: { email: 'guard@hostel.com', pass: 'Password123!' },
+            caretaker: { email: 'warden@hostel.com', pass: 'Password123!' }
+        };
+        const selected = creds[role];
+        if (selected) {
+            setLoginEmail(selected.email);
+            setLoginPassword(selected.pass);
+        }
+    };
 
     // Register Form State
     const [regName, setRegName] = useState('');
@@ -149,6 +164,34 @@ const Auth = () => {
                 {isLogin ? (
                     <div id="loginForm" className="form-container">
                         <h2>Login</h2>
+                        <div className="test-creds-wrapper">
+                            <button
+                                type="button"
+                                className="test-creds-toggle-btn"
+                                onClick={() => setShowTestCreds(!showTestCreds)}
+                            >
+                                <span>Quick Login (Test Accounts)</span>
+                                <svg className={`chevron-icon ${showTestCreds ? 'open' : ''}`} viewBox="0 0 20 20" fill="currentColor" style={{ width: '18px', height: '18px' }}>
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                            {showTestCreds && (
+                                <div className="test-creds-grid">
+                                    <button type="button" onClick={() => fillCredentials('admin')} className="test-cred-chip">
+                                        <span className="role-dot admin-dot"></span> Admin
+                                    </button>
+                                    <button type="button" onClick={() => fillCredentials('student')} className="test-cred-chip">
+                                        <span className="role-dot student-dot"></span> Student
+                                    </button>
+                                    <button type="button" onClick={() => fillCredentials('guard')} className="test-cred-chip">
+                                        <span className="role-dot guard-dot"></span> Guard
+                                    </button>
+                                    <button type="button" onClick={() => fillCredentials('caretaker')} className="test-cred-chip">
+                                        <span className="role-dot caretaker-dot"></span> Caretaker
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                         <form onSubmit={handleLoginSubmit}>
                             <div className="form-group">
                                 <label htmlFor="loginEmail">Email</label>
