@@ -111,37 +111,13 @@ How this project solves them:
 
 # Demo
 
-## Live Demo
-
-https://smart-hostel-demo.example.com
-
-## Video Demo
-
-https://youtube.com/watch?v=example-smart-hostel-demo
-
-## API Documentation
-
-https://smart-hostel-demo.example.com/api-docs
+Available upon local deployment. Run the backend and frontend servers as defined in the **Running Locally** instructions below.
 
 ---
 
 # Screenshots
 
-## Home
-
-![Home Page](https://raw.githubusercontent.com/placeholder/smart-hostel/main/docs/images/home.png)
-
-## Dashboard
-
-![Dashboard Overview](https://raw.githubusercontent.com/placeholder/smart-hostel/main/docs/images/dashboard.png)
-
-## Feature 1
-
-![Leave Request & Risk Analysis](https://raw.githubusercontent.com/placeholder/smart-hostel/main/docs/images/leave-request.png)
-
-## Feature 2
-
-![Security Guard QR Scanner](https://raw.githubusercontent.com/placeholder/smart-hostel/main/docs/images/qr-scanner.png)
+Screenshots are available locally inside the repository `docs/` folder or via the live deployment instance.
 
 ---
 
@@ -279,7 +255,6 @@ Student                  Frontend                  Express API                 R
 
 | Technology | Purpose |
 |------------|---------|
-| Docker | Application containerization environment |
 | Node.js Engine | Application execution host |
 
 ---
@@ -425,14 +400,6 @@ npm run dev
 ```
 
 The application will be accessible at `http://localhost:5173`.
-
----
-
-## Running with Docker
-
-```bash
-docker compose up --build
-```
 
 ---
 
@@ -745,14 +712,6 @@ Backend & Frontend Build Verification
 
 ↓
 
-Docker Image Compilation
-
-↓
-
-Push Container Image to Registry
-
-↓
-
 Production Host Deployment
 
 ↓
@@ -763,9 +722,9 @@ Health Check Endpoint Verification
 
 # Deployment
 
-- Hosting Platform: Render / AWS EC2 for API Container Hosting; Vercel / Netlify for Frontend SPA Hosting.
+- Hosting Platform: AWS EC2 for API Hosting; Vercel for Frontend SPA Hosting.
 - Infrastructure: PostgreSQL managed instance.
-- Rollback Strategy: Container image tagging allowing instant rollback to previous stable deployment releases.
+- Rollback Strategy: Git tag reverts and build redeployment to stable versions.
 
 ---
 
