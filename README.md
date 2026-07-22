@@ -149,10 +149,20 @@ https://smart-hostel-demo.example.com/api-docs
 
 ## High-Level Architecture
 
-The system follows a modern decoupled client-server architecture consisting of a React Single-Page Application (SPA) frontend, an Express.js RESTful API layer, and a PostgreSQL database powered by Prisma ORM.
+The system is designed following a modular Microservices Architecture consisting of decoupled service domains (Authentication Service, Leave Management Service, Risk Evaluation Engine, Gate Verification Service, and Academic Calendar Service) connected through a lightweight Express API gateway layer, communicating with a React Single-Page Application (SPA) frontend and a PostgreSQL database powered by Prisma ORM.
 
 ```text
-[ React 19 Frontend (Vite) ] <--- HTTP/REST (JWT) ---> [ Express Backend Node.js ] <--- Prisma ORM ---> [ PostgreSQL Database ]
+[ React 19 Frontend (Vite) ] <--- HTTP/REST (JWT) ---> [ Microservices API Gateway (Express) ]
+                                                                |
+     +------------------+------------------+--------------------+-------------------+
+     |                  |                  |                    |                   |
+[ Auth Service ]  [ Leave Service ]  [ Risk Engine ]  [ Gate Control Service ]  [ Calendar Service ]
+     |                  |                  |                    |                   |
+     +------------------+------------------+--------------------+-------------------+
+                                           |
+                                   [ Prisma ORM ]
+                                           |
+                               [ PostgreSQL Database ]
 ```
 
 ## Request Flow
@@ -683,7 +693,8 @@ Impact: Highly responsive API response times for security gate verification endp
 
 # Scalability
 
-- Horizontal Scaling: Stateless Express API servers capable of running behind a load balancer.
+- Microservices Architecture: Modular domain-decoupled services (Auth Service, Leave Service, Risk Engine, Gate Verification, Calendar Service) allowing independent scaling of high-throughput traffic endpoints (e.g., Gate Verification at peak hours).
+- Horizontal Scaling: Stateless service instances capable of running behind load balancers.
 - Connection Pooling: Database connection management using `@prisma/adapter-pg`.
 - Stateless Services: Auth state stored strictly within JWT payloads, eliminating memory session locks.
 - Database Scaling: PostgreSQL read-replica readiness for high-frequency gate log reporting.
